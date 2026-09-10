@@ -1,0 +1,24 @@
+{
+  "name": "cse5911-capstone-project",
+  "version": "1.0.0",
+  "description": "Web-based freezer navigation and training simulator for research laboratory staff and student workers.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "parcel build index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jbabatinca/CSE5911-Capstone-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jbabatinca/CSE5911-Capstone-Project/issues"
+  },
+  "homepage": "https://github.com/jbabatinca/CSE5911-Capstone-Project#readme",
+  "devDependencies": {
+    "parcel": "^2.16.4",
+    "typescript": "^7.0.2"
+  }
+}
