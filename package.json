@@ -1,6 +1,7 @@
 {
   "name": "cse5911-capstone-project",
   "version": "1.0.0",
+  "type": "module",
   "description": "Web-based freezer navigation and training simulator for research laboratory staff and student workers.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
