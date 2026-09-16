@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freezernavigator.com/schemas/freezer-layout.schema.json",
+  "title": "Freezer Layout",
+  "description": "Data format for a freezer, its shelves, racks, boxes, and positions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "shelves"],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "name": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "shelves": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/shelf"
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shelf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "racks"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "racks": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/rack"
+          }
+        }
+      }
+    },
+    "rack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "boxSlots"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "boxSlots": {
+          "type": "array",
+          "minItems": 16,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/boxSlot"
+          }
+        }
+      }
+    },
+    "boxSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row", "column"],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "box": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/box"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },             
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "rows", "columns", "positions"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "rows": {
+          "type": "integer",
+          "const": 9
+        },
+        "columns": {
+          "type": "integer",
+          "const": 9
+        },
+        "positions": {
+          "type": "array",
+          "maxItems": 81,
+          "items": {
+            "$ref": "#/$defs/position"
+          }
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "row", "column"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "label": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "sampleId": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}
