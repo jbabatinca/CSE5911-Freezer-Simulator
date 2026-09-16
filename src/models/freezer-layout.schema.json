@@ -41,7 +41,7 @@
         },
         "racks": {
           "type": "array",
-          "maxItems": 6,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/rack"
           }
