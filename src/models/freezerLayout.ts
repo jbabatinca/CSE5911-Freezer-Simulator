@@ -9,8 +9,10 @@ export const FREEZER_LAYOUT_SCHEMA_VERSION = "1.0" as const;
 export const FREEZER_LAYOUT_LIMITS = {
   maxShelvesPerFreezer: 4,
   maxRacksPerShelf: 6,
-  maxBoxesPerRack: 16,
+  maxBoxSlotsPerRack: 16,
   maxPositionsPerBox: 81,
+  boxRows: 9,
+  boxColumns: 9,
   maxPositionRows: 9,
   maxPositionColumns: 9,
 } as const;
@@ -72,7 +74,7 @@ export interface FreezerShelf {
 /**
  * Main freezer layout.
  *
- * Freezer → Shelves → Racks → Boxes → Positions
+ * Freezer → Shelves → Racks → BoxSlots → Boxes → Positions
  */
 export interface FreezerLayout {
   schemaVersion: FreezerLayoutSchemaVersion;
