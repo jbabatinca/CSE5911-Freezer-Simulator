@@ -5,7 +5,7 @@
   "description": "Web-based freezer navigation and training simulator for research laboratory staff and student workers.",
   "scripts": {
     "test": "vitest",
-    "build": "parcel build index.html"
+    "build": "parcel build index.html --public-url /CSE5911-Freezer-Simulator/"
   },
   "repository": {
     "type": "git",
