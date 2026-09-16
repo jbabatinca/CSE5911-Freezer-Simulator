@@ -7,7 +7,8 @@ export const FREEZER_LAYOUT_SCHEMA_VERSION = "1.0" as const;
  * Maximum capacity for each part of the freezer.
  */
 export const FREEZER_LAYOUT_LIMITS = {
-  maxRacksPerShelf: 4,
+  maxShelvesPerFreezer: 4,
+  maxRacksPerShelf: 6,
   maxBoxesPerRack: 16,
   maxPositionsPerBox: 81,
   maxPositionRows: 9,
@@ -35,9 +36,19 @@ export interface BoxPosition {
 export interface FreezerBox {
   id: string;
   name: string;
-  rows: number;
-  columns: number;
+  rows: 9;
+  columns: 9;
   positions: BoxPosition[];
+}
+
+/**
+ * A fixed placeholder for a box in the rack's 4x4 grid.
+ * Each slot can contain a box or be empty (null).
+ */
+export interface FreezerBoxSlot {
+  row: number;      // 1-4
+  column: number;   // 1-4
+  box: FreezerBox | null;
 }
 
 /**
@@ -46,7 +57,7 @@ export interface FreezerBox {
 export interface FreezerRack {
   id: string;
   name: string;
-  boxes: FreezerBox[];
+  boxSlots: FreezerBoxSlot[];
 }
 
 /**
