@@ -7,7 +7,7 @@ export const FREEZER_LAYOUT_SCHEMA_VERSION = "1.0" as const;
  * Maximum capacity for each part of the freezer.
  */
 export const FREEZER_LAYOUT_LIMITS = {
-  maxRacksPerShelf: 6,
+  maxRacksPerShelf: 4,
   maxBoxesPerRack: 16,
   maxPositionsPerBox: 81,
   maxPositionRows: 9,
