@@ -9,7 +9,7 @@ Freezer → Shelves → Racks → Boxes → Positions
 | Container | Allowed Children |
 |---|---|
 | Freezer | Any number of shelves |
-| Shelf | 0–6 racks |
+| Shelf | 0–4 racks |
 | Rack | 0–16 boxes |
 | Box | 0–81 positions |
 
