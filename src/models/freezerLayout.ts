@@ -21,6 +21,15 @@ export type FreezerLayoutSchemaVersion =
   typeof FREEZER_LAYOUT_SCHEMA_VERSION;
 
 /**
+ * A sample that can be stored in a box position.
+ */
+export interface Sample {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/**
  * A single position inside a storage box.
  * Example: position A1.
  */
@@ -74,11 +83,12 @@ export interface FreezerShelf {
 /**
  * Main freezer layout.
  *
- * Freezer → Shelves → Racks → BoxSlots → Boxes → Positions
+ * Freezer → Shelves → Racks → BoxSlots → Boxes → Positions → Samples
  */
 export interface FreezerLayout {
   schemaVersion: FreezerLayoutSchemaVersion;
   id: string;
   name: string;
   shelves: FreezerShelf[];
+  samples: Sample[];
 }
