@@ -1,6 +1,6 @@
-import freezerData from './data/sample-freezer-layout.json';
-import type { FreezerLayout } from './models/freezerLayout';
+import { App } from './render/App.js';
 
+<<<<<<< Updated upstream
 const layout: FreezerLayout = freezerData as FreezerLayout;
 
 const app = document.getElementById('app');
@@ -62,3 +62,6 @@ if (app) {
 
   app.replaceChildren(title, description, freezer);
 }
+=======
+App();
+>>>>>>> Stashed changes
