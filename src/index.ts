@@ -3,30 +3,62 @@ import type { FreezerLayout } from './models/freezerLayout';
 
 const layout: FreezerLayout = freezerData as FreezerLayout;
 
-console.log("Freezer Navigation app started!");
-console.log("Loaded freezer:", layout.name);
-
 const app = document.getElementById('app');
 if (app) {
-  let html = `<h2>${layout.name}</h2>`;
-  html += `<p>ID: ${layout.id}</p>`;
-  html += `<p>Schema: ${layout.schemaVersion}</p>`;
+  const title = document.createElement('h2');
+  title.id = 'freezer-title';
+  title.textContent = layout.name;
 
-  layout.shelves.forEach((shelf, shelfIdx) => {
-    html += `<h3>Shelf ${shelfIdx + 1}: ${shelf.name}</h3>`;
+  const description = document.createElement('p');
+  description.textContent = 'Front view — shelves are shown from top to bottom.';
 
-    shelf.racks.forEach((rack, rackIdx) => {
-      const filledSlots = rack.boxSlots.filter(s => s.box !== null).length;
-      html += `<p>Rack ${rackIdx + 1}: ${rack.name} (${filledSlots}/16 boxes filled)</p>`;
+  const freezer = document.createElement('section');
+  freezer.className = 'freezer';
+  freezer.setAttribute('aria-labelledby', title.id);
 
-      html += `<ul>`;
-      rack.boxSlots.forEach(slot => {
-        const label = slot.box ? slot.box.name : 'empty';
-        html += `<li>[${slot.row},${slot.column}] ${label}</li>`;
-      });
-      html += `</ul>`;
-    });
-  });
+  for (const shelf of layout.shelves) {
+    const shelfView = document.createElement('section');
+    shelfView.className = 'shelf';
+    shelfView.setAttribute('aria-label', shelf.name);
 
-  app.innerHTML = html;
+    const shelfTitle = document.createElement('h3');
+    shelfTitle.textContent = shelf.name;
+    shelfView.append(shelfTitle);
+
+    const racks = document.createElement('ul');
+    racks.className = 'racks';
+
+    for (const rack of shelf.racks) {
+      const rackView = document.createElement('li');
+      rackView.className = 'rack';
+
+      const rackTitle = document.createElement('h4');
+      rackTitle.textContent = rack.name;
+
+      const occupancy = document.createElement('p');
+      const filledSlots = rack.boxSlots.filter(slot => slot.box !== null).length;
+      occupancy.textContent = `${filledSlots} / ${rack.boxSlots.length} boxes filled`;
+
+      rackView.append(rackTitle, occupancy);
+      racks.append(rackView);
+    }
+
+    if (shelf.racks.length === 0) {
+      const emptyShelf = document.createElement('p');
+      emptyShelf.textContent = 'No racks on this shelf.';
+      shelfView.append(emptyShelf);
+    } else {
+      shelfView.append(racks);
+    }
+
+    freezer.append(shelfView);
+  }
+
+  if (layout.shelves.length === 0) {
+    const emptyFreezer = document.createElement('p');
+    emptyFreezer.textContent = 'No shelves in this freezer.';
+    freezer.append(emptyFreezer);
+  }
+
+  app.replaceChildren(title, description, freezer);
 }
