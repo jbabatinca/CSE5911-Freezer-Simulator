@@ -376,7 +376,24 @@ export function App(): void {
         // Add Sample
         document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                // TODO: Add sample logic
+                const coords = btn.id.replace('btn-add-sample-', '').split('-');
+                const boxRow = parseInt(coords[0]!);
+                const boxCol = parseInt(coords[1]!);
+                const sampleRow = parseInt(coords[2]!);
+                const sampleCol = parseInt(coords[3]!);
+                const currentLayout = getCurrentEditingLayout();
+                const expandedShelfId = getExpandedShelfId();
+                const expandedRackId = getExpandedRackId();
+
+                if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+
+                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
+                const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
+
+                if (shelfIndex >= 0 && rackIndex >= 0) {
+                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol);
+                    render();
+                }
             });
         });
 

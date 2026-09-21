@@ -1,10 +1,10 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
-import { 
-  getExpandedShelfId, 
-  getExpandedRackId, 
-  getExpandedBoxId 
+import type { FreezerRack } from '../models/freezerLayout.js';
+import {
+  getExpandedShelfId,
+  getExpandedRackId,
+  getExpandedBoxId
 } from '../state/editorState.js';
-import type { FreezerShelf, FreezerRack, FreezerBox } from '../models/freezerLayout.js';
 
 export function FreezerEditor(layout: SavedLayout): string {
   const shelves = layout.freezerData.shelves;
@@ -16,11 +16,11 @@ export function FreezerEditor(layout: SavedLayout): string {
     <div class="freezer-editor">
       <div class="editor-header">
         <button id="btn-back-to-layouts" class="btn-back">← Back to Layouts</button>
-        
-        <input 
-          type="text" 
-          id="layout-name-input" 
-          value="${layout.name}" 
+
+        <input
+          type="text"
+          id="layout-name-input"
+          value="${layout.name}"
           placeholder="Layout name"
           class="layout-name-input"
         />
@@ -28,113 +28,132 @@ export function FreezerEditor(layout: SavedLayout): string {
         <button id="btn-download" class="btn-download">Download</button>
         <button id="btn-delete" class="btn-delete">Delete</button>
       </div>
-      
+
       <div class="editor-content">
-        <div class="shelves-section">
-          <h3>Shelves (${shelves.length}/4)</h3>
-          ${renderShelves(shelves, expandedShelfId, expandedRackId, expandedBoxId)}
+        <h2 id="freezer-title">${layout.name}</h2>
+        <p>Front view — shelves are shown from top to bottom.</p>
+
+        <section class="freezer" aria-labelledby="freezer-title">
+          ${shelves.length === 0
+            ? '<p>No shelves in this freezer.</p>'
+            : shelves.map((shelf, shelfIdx) => {
+                const isExpanded = expandedShelfId === shelf.id;
+                return `
+                  <section class="shelf" aria-label="${shelf.name}">
+                    <div class="shelf-header">
+                      <button id="btn-toggle-shelf-${shelf.id}" class="btn-toggle">
+                        ${isExpanded ? '▼' : '▶'}
+                      </button>
+                      <h3>${shelf.name}</h3>
+                      ${shelves.length < 4 ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
+                    </div>
+
+                    ${isExpanded ? `
+                      ${shelf.racks.length === 0
+                        ? '<p>No racks on this shelf.</p>'
+                        : `
+                          <ul class="racks">
+                            ${shelf.racks.map((rack) => {
+                              const filledSlots = rack.boxSlots.filter(slot => slot.box !== null).length;
+                              const rackExpanded = expandedRackId === rack.id;
+                              return `
+                                <li class="rack" id="rack-${rack.id}">
+                                  <div class="rack-info">
+                                    <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
+                                      ${rackExpanded ? '▼' : '▶'}
+                                    </button>
+                                    <h4>${rack.name}</h4>
+                                    <p>${filledSlots} / ${rack.boxSlots.length} boxes filled</p>
+                                    ${shelf.racks.length > 1 ? `<button id="btn-remove-rack-${shelf.racks.indexOf(rack)}" class="btn-remove">Remove</button>` : ''}
+                                  </div>
+
+                                  ${rackExpanded ? `
+                                    <div class="rack-grid">
+                                      ${renderBoxGrid(rack, expandedBoxId)}
+                                    </div>
+                                  ` : ''}
+                                </li>
+                              `;
+                            }).join('')}
+                          </ul>
+                        `}
+                      ${shelf.racks.length < 6 ? `<button id="btn-add-rack" class="btn-add">+ Add Rack to ${shelf.name}</button>` : ''}
+                    ` : ''}
+                  </section>
+                `;
+              }).join('')}
+
           ${shelves.length < 4 ? `<button id="btn-add-shelf" class="btn-add">+ Add Shelf</button>` : ''}
+        </section>
+      </div>
+    </div>
+  `;
+}
+
+function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string {
+  let html = '<div class="box-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px;">';
+
+  for (let i = 0; i < rack.boxSlots.length; i++) {
+    const slot = rack.boxSlots[i]!;
+    const hasBox = slot.box !== null;
+
+    if (hasBox) {
+      const boxExpanded = expandedBoxId === slot.box!.id;
+      html += `
+        <div class="box-container" style="border: 2px solid #4CAF50; border-radius: 4px; overflow: hidden;">
+          <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle" style="width: 100%; padding: 8px; background-color: #f0f0f0; border: none; cursor: pointer; text-align: left; font-weight: bold;">
+            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/81)
+          </button>
+          ${boxExpanded ? `
+            <div class="box-positions-grid" style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 8px; background-color: #fafafa;">
+              ${renderPositionGrid(slot.box!, slot.row, slot.column)}
+            </div>
+          ` : ''}
         </div>
-      </div>
-    </div>
-  `;
+      `;
+    } else {
+      html += `
+        <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 2px dashed #999; border-radius: 4px; background-color: #fafafa;">
+          <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" style="background: none; border: none; cursor: pointer; font-size: 24px; color: #999;">+</button>
+        </div>
+      `;
+    }
+  }
+
+  html += '</div>';
+  return html;
 }
 
-function renderShelves(shelves: FreezerShelf[], expandedShelfId: string | null, expandedRackId: string | null, expandedBoxId: string | null): string {
-  return shelves.map((shelf, idx) => `
-    <div class="shelf" id="shelf-${shelf.id}">
-      <div class="shelf-header">
-        <button id="btn-toggle-shelf-${shelf.id}" class="btn-toggle">
-          ${expandedShelfId === shelf.id ? '▼' : '▶'} ${shelf.name} (${shelf.racks.length}/6 racks)
-        </button>
-        <button id="btn-remove-shelf-${idx}" class="btn-remove">Remove</button>
-      </div>
-      
-      ${expandedShelfId === shelf.id ? renderRacks(shelf.racks, expandedRackId, expandedBoxId) : ''}
-    </div>
-  `).join('');
-}
+function renderPositionGrid(box: any, boxRow: number, boxCol: number): string {
+  const grid = Array(81).fill(null);
 
-function renderRacks(racks: FreezerRack[], expandedRackId: string | null, expandedBoxId: string | null): string {
-  return `
-    <div class="racks-section">
-      <div class="racks-row">
-        ${racks.map((rack, idx) => `
-          <div class="rack" id="rack-${rack.id}">
-            <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
-              ${expandedRackId === rack.id ? '▼' : '▶'} ${rack.name} (${rack.boxSlots.filter(s => s.box).length}/16)
-            </button>
-            <button id="btn-remove-rack-${idx}" class="btn-remove">Remove</button>
-            
-            ${expandedRackId === rack.id ? renderBoxGrid(rack.boxSlots, expandedBoxId) : ''}
-          </div>
-        `).join('')}
-        
-        ${racks.length < 6 ? `<button id="btn-add-rack" class="btn-add">+ Add Rack</button>` : ''}
-      </div>
-    </div>
-  `;
-}
-
-function renderBoxGrid(boxSlots: any[], expandedBoxId: string | null): string {
-  return `
-    <div class="boxes-grid-section">
-      <div class="boxes-grid">
-        ${boxSlots.map((slot, idx) => `
-          <div class="box-slot" id="box-slot-${slot.row}-${slot.column}">
-            ${slot.box ? `
-              <div class="box" id="box-${slot.box.id}">
-                <button id="btn-toggle-box-${slot.box.id}" class="btn-toggle">
-                  ${expandedBoxId === slot.box.id ? '▼' : '▶'} ${slot.box.name}
-                </button>
-                <button id="btn-remove-box-${idx}" class="btn-remove">Remove</button>
-                
-                ${expandedBoxId === slot.box.id ? renderSampleGrid(slot.box.positions) : ''}
-              </div>
-            ` : `
-              <div class="empty-slot">
-                <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add">+ Add Box</button>
-              </div>
-            `}
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderSampleGrid(positions: any[]): string {
-  const grid = Array(81).fill(null); // 9x9 = 81 positions
-  
-  // Mark which positions have samples
-  positions.forEach(pos => {
+  box.positions.forEach((pos: any) => {
     const idx = (pos.row - 1) * 9 + (pos.column - 1);
     grid[idx] = pos;
   });
 
-  return `
-    <div class="samples-grid">
-      ${grid.map((pos, idx) => {
-        const row = Math.floor(idx / 9) + 1;
-        const col = (idx % 9) + 1;
-        const label = String.fromCharCode(64 + row) + col; // A1, A2, etc.
-        
-        if (pos) {
-          return `
-            <div class="sample" id="sample-${pos.id}">
-              ${pos.label}
-              <button id="btn-remove-sample-${pos.id}" class="btn-remove">X</button>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="empty-sample">
-              <button id="btn-add-sample-${row}-${col}" class="btn-add">+</button>
-            </div>
-          `;
-        }
-      }).join('')}
-    </div>
-  `;
+  let html = '';
+  for (let i = 0; i < 81; i++) {
+    const pos = grid[i];
+    const row = Math.floor(i / 9) + 1;
+    const col = (i % 9) + 1;
+    const label = String.fromCharCode(64 + row) + col;
+
+    if (pos) {
+      html += `
+        <div id="pos-${pos.id}" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background-color: #4CAF50; border-radius: 2px; color: white; font-size: 10px; font-weight: bold; cursor: pointer;">
+          ${label}
+        </div>
+      `;
+    } else {
+      html += `
+        <div style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 2px; background-color: white;">
+          <button id="btn-add-sample-${boxRow}-${boxCol}-${row}-${col}" class="btn-add" style="background: none; border: none; cursor: pointer; font-size: 12px; color: #999; width: 100%; height: 100%;">+</button>
+        </div>
+      `;
+    }
+  }
+
+  return html;
 }
 
