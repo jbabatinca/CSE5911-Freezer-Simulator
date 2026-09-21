@@ -1,4 +1,4 @@
-import type { FreezerShelf, FreezerRack, FreezerBox, BoxPosition } from '../models/freezerLayout.js';
+import type { FreezerShelf, FreezerRack, FreezerBox, BoxPosition, Sample } from '../models/freezerLayout.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
 
@@ -92,7 +92,26 @@ export function removeBox(layout: SavedLayout, shelfIndex: number, rackIndex: nu
   }
 }
 
-// SAMPLE operations
+// LAYOUT SAMPLES operations (manage samples in the freezer layout)
+export function createSample(layout: SavedLayout, name: string, description?: string): Sample {
+  const newSample: Sample = {
+    id: generateId('sample'),
+    name,
+    description
+  };
+  layout.freezerData.samples.push(newSample);
+  return newSample;
+}
+
+export function removeSampleFromLayout(layout: SavedLayout, sampleId: string): void {
+  const freezer = layout.freezerData;
+  const idx = freezer.samples.findIndex(s => s.id === sampleId);
+  if (idx >= 0) {
+    freezer.samples.splice(idx, 1);
+  }
+}
+
+// BOX POSITION SAMPLES operations (assign samples to box positions)
 export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleRow: number, sampleCol: number): void {
   const freezer = layout.freezerData;
   if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;

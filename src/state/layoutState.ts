@@ -21,6 +21,7 @@ export function createNewEmptyLayout(): SavedLayout {
             id,
             name: 'Unnamed Freezer',
             shelves: [],
+            samples: [],
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
