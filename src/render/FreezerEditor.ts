@@ -1,5 +1,5 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
-import type { FreezerRack } from '../models/freezerLayout.js';
+import type { BoxPosition, FreezerBox, FreezerRack } from '../models/freezerLayout.js';
 import {
   getExpandedShelfId,
   getExpandedRackId,
@@ -57,7 +57,7 @@ export function FreezerEditor(layout: SavedLayout): string {
                               const filledSlots = rack.boxSlots.filter(slot => slot.box !== null).length;
                               const rackExpanded = expandedRackId === rack.id;
                               return `
-                                <li class="rack" id="rack-${rack.id}">
+                                <li class="rack${rackExpanded ? ' rack-expanded' : ''}" id="rack-${rack.id}">
                                   <div class="rack-info">
                                     <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
                                       ${rackExpanded ? '▼' : '▶'}
@@ -91,7 +91,7 @@ export function FreezerEditor(layout: SavedLayout): string {
 }
 
 function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string {
-  let html = '<div class="box-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px;">';
+  let html = '<div class="box-grid">';
 
   for (let i = 0; i < rack.boxSlots.length; i++) {
     const slot = rack.boxSlots[i]!;
@@ -100,34 +100,42 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string 
     if (hasBox) {
       const boxExpanded = expandedBoxId === slot.box!.id;
       html += `
-        <div class="box-container" style="border: 2px solid #4CAF50; border-radius: 4px; overflow: hidden;">
-          <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle" style="width: 100%; padding: 8px; background-color: #f0f0f0; border: none; cursor: pointer; text-align: left; font-weight: bold;">
+        <div class="box-container${boxExpanded ? ' box-selected' : ''}">
+          <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
             ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/81)
           </button>
-          ${boxExpanded ? `
-            <div class="box-positions-grid" style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 8px; background-color: #fafafa;">
-              ${renderPositionGrid(slot.box!, slot.row, slot.column)}
-            </div>
-          ` : ''}
         </div>
       `;
     } else {
       html += `
-        <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border: 2px dashed #999; border-radius: 4px; background-color: #fafafa;">
-          <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" style="background: none; border: none; cursor: pointer; font-size: 24px; color: #999;">+</button>
+        <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}">
+          <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" aria-label="Add box at row ${slot.row}, column ${slot.column}">+</button>
         </div>
       `;
     }
   }
 
   html += '</div>';
+
+  // Use the rack's full width for samples without moving its 4×4 box slots.
+  const expandedSlot = rack.boxSlots.find(slot => slot.box?.id === expandedBoxId);
+  if (expandedSlot?.box) {
+    html += `
+      <section class="box-details" aria-label="Box positions">
+        <h5>${expandedSlot.box.name} — positions</h5>
+        <div class="box-positions-grid">
+          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column)}
+        </div>
+      </section>
+    `;
+  }
   return html;
 }
 
-function renderPositionGrid(box: any, boxRow: number, boxCol: number): string {
-  const grid = Array(81).fill(null);
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number): string {
+  const grid = Array<BoxPosition | null>(81).fill(null);
 
-  box.positions.forEach((pos: any) => {
+  box.positions.forEach((pos) => {
     const idx = (pos.row - 1) * 9 + (pos.column - 1);
     grid[idx] = pos;
   });
@@ -141,14 +149,14 @@ function renderPositionGrid(box: any, boxRow: number, boxCol: number): string {
 
     if (pos) {
       html += `
-        <div id="pos-${pos.id}" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background-color: #4CAF50; border-radius: 2px; color: white; font-size: 10px; font-weight: bold; cursor: pointer;">
+        <div id="pos-${pos.id}" class="box-position position-filled">
           ${label}
         </div>
       `;
     } else {
       html += `
-        <div style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 2px; background-color: white;">
-          <button id="btn-add-sample-${boxRow}-${boxCol}-${row}-${col}" class="btn-add" style="background: none; border: none; cursor: pointer; font-size: 12px; color: #999; width: 100%; height: 100%;">+</button>
+        <div class="box-position">
+          <button id="btn-add-sample-${boxRow}-${boxCol}-${row}-${col}" class="btn-add" aria-label="Add sample at ${label}">+</button>
         </div>
       `;
     }
