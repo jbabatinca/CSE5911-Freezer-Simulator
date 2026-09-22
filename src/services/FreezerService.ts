@@ -97,7 +97,7 @@ export function createSample(layout: SavedLayout, name: string, description?: st
   const newSample: Sample = {
     id: generateId('sample'),
     name,
-    description
+    ...(description !== undefined ? { description } : {})
   };
   layout.freezerData.samples.push(newSample);
   return newSample;

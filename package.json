@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Web-based freezer navigation and training simulator for research laboratory staff and student workers.",
   "scripts": {
+    "start": "parcel index.html --dist-dir .parcel-dev --public-url /",
     "test": "vitest",
     "build": "parcel build index.html --public-url /CSE5911-Freezer-Simulator/"
   },
