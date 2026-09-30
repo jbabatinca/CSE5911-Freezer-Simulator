@@ -6,7 +6,7 @@ import {
   getExpandedBoxId
 } from '../state/editorState.js';
 
-export function FreezerEditor(layout: SavedLayout): string {
+export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): string {
   const shelves = layout.freezerData.shelves;
   const expandedShelfId = getExpandedShelfId();
   const expandedRackId = getExpandedRackId();
@@ -17,16 +17,20 @@ export function FreezerEditor(layout: SavedLayout): string {
       <div class="editor-header">
         <button id="btn-back-to-layouts" class="btn-back">← Back to Layouts</button>
 
-        <input
-          type="text"
-          id="layout-name-input"
-          value="${layout.name}"
-          placeholder="Layout name"
-          class="layout-name-input"
-        />
-        <button id="btn-save" class="btn-save">Save</button>
+        ${readOnly ? `
+          <span class="layout-name-display">${layout.name}</span>
+        ` : `
+          <input
+            type="text"
+            id="layout-name-input"
+            value="${layout.name}"
+            placeholder="Layout name"
+            class="layout-name-input"
+          />
+          <button id="btn-save" class="btn-save">Save</button>
+          <button id="btn-delete" class="btn-delete">Delete</button>
+        `}
         <button id="btn-download" class="btn-download">Download</button>
-        <button id="btn-delete" class="btn-delete">Delete</button>
       </div>
 
       <div class="editor-content">
@@ -45,7 +49,7 @@ export function FreezerEditor(layout: SavedLayout): string {
                         ${isExpanded ? '▼' : '▶'}
                       </button>
                       <h3>${shelf.name}</h3>
-                      ${shelves.length < 4 ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
+                      ${!readOnly && shelves.length < 4 ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
                     </div>
 
                     ${isExpanded ? `
@@ -64,7 +68,7 @@ export function FreezerEditor(layout: SavedLayout): string {
                                     </button>
                                     <h4>${rack.name}</h4>
                                     <p>${filledSlots} / ${rack.boxSlots.length} boxes filled</p>
-                                    ${shelf.racks.length > 1 ? `<button id="btn-remove-rack-${shelf.racks.indexOf(rack)}" class="btn-remove">Remove</button>` : ''}
+                                    ${!readOnly && shelf.racks.length > 1 ? `<button id="btn-remove-rack-${shelf.racks.indexOf(rack)}" class="btn-remove">Remove</button>` : ''}
                                   </div>
 
                                   ${rackExpanded ? `
@@ -77,13 +81,13 @@ export function FreezerEditor(layout: SavedLayout): string {
                             }).join('')}
                           </ul>
                         `}
-                      ${shelf.racks.length < 6 ? `<button id="btn-add-rack" class="btn-add">+ Add Rack to ${shelf.name}</button>` : ''}
+                      ${!readOnly && shelf.racks.length < 6 ? `<button id="btn-add-rack" class="btn-add">+ Add Rack to ${shelf.name}</button>` : ''}
                     ` : ''}
                   </section>
                 `;
               }).join('')}
 
-          ${shelves.length < 4 ? `<button id="btn-add-shelf" class="btn-add">+ Add Shelf</button>` : ''}
+          ${!readOnly && shelves.length < 4 ? `<button id="btn-add-shelf" class="btn-add">+ Add Shelf</button>` : ''}
         </section>
       </div>
     </div>
@@ -100,16 +104,22 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, samples:
     if (hasBox) {
       const boxExpanded = expandedBoxId === slot.box!.id;
       html += `
-        <div class="box-container${boxExpanded ? ' box-selected' : ''}">
+        <div class="box-container${boxExpanded ? ' box-selected' : ''}" style="position: relative;">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
             ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/81)
           </button>
+          ${!readOnly ? `<button id="btn-remove-box-${slot.row}-${slot.column}" class="btn-remove-box" title="Remove box" style="position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; padding: 0; font-size: 14px; min-width: auto;">✕</button>` : ''}
+        </div>
+      `;
+    } else if (!readOnly) {
+      html += `
+        <div class="box-slot empty">
+          <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" aria-label="Add box at row ${slot.row}, column ${slot.column}">+</button>
         </div>
       `;
     } else {
       html += `
         <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}">
-          <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" aria-label="Add box at row ${slot.row}, column ${slot.column}">+</button>
         </div>
       `;
     }
@@ -132,7 +142,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, samples:
   return html;
 }
 
-function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, samples: SavedLayout['freezerData']['samples']): string {
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean = false, samples: SavedLayout['freezerData']['samples']): string {
   const grid = Array<BoxPosition | null>(81).fill(null);
   const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
@@ -152,19 +162,25 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, sam
       const sampleName = pos.sampleId ? sampleNames.get(pos.sampleId) : undefined;
       html += sampleName || pos.sampleId
         ? `
-          <div id="pos-${pos.id}" class="box-position position-filled" title="${escapeHtml(sampleName ?? pos.sampleId!)}" aria-label="${label}: ${escapeHtml(sampleName ?? pos.sampleId!)}">
+          <div id="pos-${pos.id}" class="box-position position-filled" style="position: relative;" title="${escapeHtml(sampleName ?? pos.sampleId!)}" aria-label="${label}: ${escapeHtml(sampleName ?? pos.sampleId!)}">
             ${label}
-          </div>
+            ${!readOnly ? `<button id="btn-remove-sample-${pos.id}" class="btn-remove-sample" title="Remove sample" style="position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; padding: 0; font-size: 12px; min-width: auto;">✕</button>` : ''}
+        </div>
         `
         : `
           <button id="btn-assign-specimen-${pos.id}" class="box-position position-filled btn-assign-specimen" aria-label="Assign specimen to ${label}" title="Assign specimen">
             ${label} +
           </button>
         `;
-    } else {
+    } else if (!readOnly) {
       html += `
         <div class="box-position">
           <button id="btn-add-sample-${boxRow}-${boxCol}-${row}-${col}" class="btn-add" aria-label="Add sample at ${label}">+</button>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="box-position">
         </div>
       `;
     }
