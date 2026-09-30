@@ -1,49 +1,72 @@
-import {getCurrentMode, setMode } from '../state/modeState.js';
+import {getCurrentMode, setMode, getShowAdminPasswordModal, setShowAdminPasswordModal, getShowAdminSettingsModal, setShowAdminSettingsModal, goBack } from '../state/modeState.js';
 import { HomeView } from './HomeView.js';
+import { AdminModeHomeView } from './AdminModeHomeView.js';
+import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
 import { TrainingModeView } from './TrainingModeView.js';
 import { Navigation } from './Navigation.js';
+import { AdminPasswordModal } from './AdminPasswordModal.js';
+import { AdminSettingsModal } from './AdminSettingsModal.js';
 import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationState.js';
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
 import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import { 
-  addShelf, removeShelf, 
-  addRack, removeRack, 
-  addBox, removeBox, 
-  addSample, removeSample 
+import {
+  addShelf, removeShelf,
+  addRack, removeRack,
+  addBox, removeBox,
+  addSample, removeSample
 } from '../services/FreezerService.js';
-import { 
+import {
   getExpandedShelfId, setExpandedShelfId,
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
+import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, changeAdminPassword } from '../state/authState.js';
 
 
 export function App(): void {
     const app = document.getElementById('app');
     if (!app) return;
 
+    initializeAuth();
     render();
 
     function render(): void {
-        if (!app) return;  // Add this check
+        if (!app) return;
         const mode = getCurrentMode();
+        const isAdmin = isAdminAuthenticated();
+        const showPasswordModal = getShowAdminPasswordModal();
+        const showSettingsModal = getShowAdminSettingsModal();
         let html = '';
 
-
-        //Show navigation on all screens except home
+        // Show navigation on all screens except the main home
         if (mode !== 'home') {
-            html += Navigation();
+            html += Navigation(mode);
         }
 
         // Show content based on the current mode
         if (mode === 'home') {
             html += HomeView();
-        } else if (mode === 'configuration') {
-            html += ConfigurationModeView();
+        } else if (mode === 'admin-home') {
+            html += AdminModeHomeView();
+        } else if (mode === 'user-home') {
+            html += UserModeHomeView();
+        } else if (mode === 'configuration' && isAdmin) {
+            html += ConfigurationModeView(false);
+        } else if (mode === 'freezer-layouts') {
+            html += ConfigurationModeView(true);
         } else if (mode === 'training') {
             html += TrainingModeView();
+        }
+
+        // Show modals if needed
+        if (showPasswordModal) {
+            html += AdminPasswordModal();
+        }
+
+        if (showSettingsModal && isAdmin) {
+            html += AdminSettingsModal();
         }
 
         app.innerHTML = html;
@@ -52,22 +75,43 @@ export function App(): void {
 
     function attachEventListeners(): void {
         // Home screen buttons
-        const btnConfiguration = document.getElementById('btn-configuration');
-        const btnTraining = document.getElementById('btn-training');
+        const btnAdminMode = document.getElementById('btn-admin-mode');
+        const btnUserMode = document.getElementById('btn-user-mode');
 
-        // Navigation button
+        // Navigation buttons
+        const btnBack = document.getElementById('btn-back');
         const btnHome = document.getElementById('btn-home');
+        const btnLogout = document.getElementById('btn-logout');
+        const btnAdminSettings = document.getElementById('btn-admin-settings');
 
-        if (btnConfiguration) {
-            btnConfiguration.addEventListener('click', () => {
-                setMode('configuration');
+        // Password modal buttons
+        const btnAdminLogin = document.getElementById('btn-admin-login');
+        const btnCancelAdmin = document.getElementById('btn-cancel-admin');
+        const passwordInput = document.getElementById('admin-password-input') as HTMLInputElement;
+
+        // Settings modal buttons
+        const btnChangePassword = document.getElementById('btn-change-password');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+
+        if (btnAdminMode) {
+            btnAdminMode.addEventListener('click', () => {
+                setShowAdminPasswordModal(true);
                 render();
             });
         }
 
-        if (btnTraining) {
-            btnTraining.addEventListener('click', () => {
-                setMode('training');
+        if (btnUserMode) {
+            btnUserMode.addEventListener('click', () => {
+                setMode('user-home');
+                render();
+            });
+        }
+
+        if (btnBack) {
+            btnBack.addEventListener('click', () => {
+                goBack();
+                setShowAdminPasswordModal(false);
+                setShowAdminSettingsModal(false);
                 render();
             });
         }
@@ -75,6 +119,141 @@ export function App(): void {
         if (btnHome) {
             btnHome.addEventListener('click', () => {
                 setMode('home');
+                setShowAdminPasswordModal(false);
+                setShowAdminSettingsModal(false);
+                render();
+            });
+        }
+
+        if (btnLogout) {
+            btnLogout.addEventListener('click', () => {
+                logout();
+                setMode('home');
+                setShowAdminPasswordModal(false);
+                setShowAdminSettingsModal(false);
+                render();
+            });
+        }
+
+        if (btnAdminSettings) {
+            btnAdminSettings.addEventListener('click', () => {
+                setShowAdminSettingsModal(true);
+                render();
+            });
+        }
+
+        if (btnAdminLogin) {
+            btnAdminLogin.addEventListener('click', () => {
+                if (authenticateAdmin(passwordInput.value)) {
+                    setShowAdminPasswordModal(false);
+                    setMode('admin-home');
+                    render();
+                } else {
+                    const errorDiv = document.getElementById('admin-password-error');
+                    if (errorDiv) {
+                        errorDiv.textContent = 'Incorrect password';
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            });
+        }
+
+        if (btnCancelAdmin) {
+            btnCancelAdmin.addEventListener('click', () => {
+                setShowAdminPasswordModal(false);
+                render();
+            });
+        }
+
+        // Allow Enter key in password input
+        if (passwordInput) {
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    btnAdminLogin?.click();
+                }
+            });
+        }
+
+        if (btnChangePassword) {
+            btnChangePassword.addEventListener('click', () => {
+                const currentPwdInput = document.getElementById('current-password-input') as HTMLInputElement;
+                const newPwdInput = document.getElementById('new-password-input') as HTMLInputElement;
+                const confirmPwdInput = document.getElementById('confirm-password-input') as HTMLInputElement;
+                const messageDiv = document.getElementById('settings-message');
+
+                if (!currentPwdInput.value || !newPwdInput.value || !confirmPwdInput.value) {
+                    if (messageDiv) {
+                        messageDiv.textContent = 'All fields are required';
+                        messageDiv.style.color = 'red';
+                    }
+                    return;
+                }
+
+                if (newPwdInput.value !== confirmPwdInput.value) {
+                    if (messageDiv) {
+                        messageDiv.textContent = 'New passwords do not match';
+                        messageDiv.style.color = 'red';
+                    }
+                    return;
+                }
+
+                if (changeAdminPassword(currentPwdInput.value, newPwdInput.value)) {
+                    if (messageDiv) {
+                        messageDiv.textContent = 'Password changed successfully';
+                        messageDiv.style.color = 'green';
+                    }
+                    setTimeout(() => {
+                        setShowAdminSettingsModal(false);
+                        render();
+                    }, 1500);
+                } else {
+                    if (messageDiv) {
+                        messageDiv.textContent = 'Current password is incorrect';
+                        messageDiv.style.color = 'red';
+                    }
+                }
+            });
+        }
+
+        if (btnCloseSettings) {
+            btnCloseSettings.addEventListener('click', () => {
+                setShowAdminSettingsModal(false);
+                render();
+            });
+        }
+
+        // Admin home buttons
+        const btnAdminConfiguration = document.getElementById('btn-admin-configuration');
+        const btnAdminTraining = document.getElementById('btn-admin-training');
+
+        if (btnAdminConfiguration) {
+            btnAdminConfiguration.addEventListener('click', () => {
+                setMode('configuration');
+                render();
+            });
+        }
+
+        if (btnAdminTraining) {
+            btnAdminTraining.addEventListener('click', () => {
+                setMode('training');
+                render();
+            });
+        }
+
+        // User home buttons
+        const btnFreezerLayouts = document.getElementById('btn-freezer-layouts');
+        const btnUserTraining = document.getElementById('btn-user-training');
+
+        if (btnFreezerLayouts) {
+            btnFreezerLayouts.addEventListener('click', () => {
+                setMode('freezer-layouts');
+                render();
+            });
+        }
+
+        if (btnUserTraining) {
+            btnUserTraining.addEventListener('click', () => {
+                setMode('training');
                 render();
             });
         }
@@ -362,13 +541,23 @@ export function App(): void {
         // Remove Box
         document.querySelectorAll('[id^="btn-remove-box-"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const index = parseInt(btn.id.replace('btn-remove-box-', ''));
+                const coords = btn.id.replace('btn-remove-box-', '').split('-');
+                const row = parseInt(coords[0]!);
+                const column = parseInt(coords[1]!);
                 const currentLayout = getCurrentEditingLayout();
-                if (!currentLayout) return;
-                
-                // This is tricky - we need to find which box was removed
-                // For now, use the expanded shelf/rack and find the box
-                // TODO: Better way to track box position
+                const expandedShelfId = getExpandedShelfId();
+                const expandedRackId = getExpandedRackId();
+
+                if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                if (!confirm('Remove this box and all its samples?')) return;
+
+                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
+                const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
+
+                if (shelfIndex >= 0 && rackIndex >= 0) {
+                    removeBox(currentLayout, shelfIndex, rackIndex, row, column);
+                    render();
+                }
             });
         });
 
@@ -400,8 +589,30 @@ export function App(): void {
         // Remove Sample
         document.querySelectorAll('[id^="btn-remove-sample-"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const sampleId = btn.id.replace('btn-remove-sample-', '');
-                // TODO: Remove sample logic
+                const positionId = btn.id.replace('btn-remove-sample-', '');
+                const currentLayout = getCurrentEditingLayout();
+                const expandedShelfId = getExpandedShelfId();
+                const expandedRackId = getExpandedRackId();
+                const expandedBoxId = getExpandedBoxId();
+
+                if (!currentLayout || !expandedShelfId || !expandedRackId || !expandedBoxId) return;
+                if (!confirm('Remove this sample?')) return;
+
+                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
+                const shelf = currentLayout.freezerData.shelves[shelfIndex];
+                if (shelfIndex < 0 || !shelf) return;
+
+                const rackIndex = shelf.racks.findIndex(r => r.id === expandedRackId);
+                if (rackIndex < 0) return;
+
+                const slot = shelf.racks[rackIndex]!.boxSlots.find(s => s.box?.id === expandedBoxId);
+                if (!slot) return;
+
+                const row = slot.row;
+                const column = slot.column;
+
+                removeSample(currentLayout, shelfIndex, rackIndex, row, column, positionId);
+                render();
             });
         });
 
