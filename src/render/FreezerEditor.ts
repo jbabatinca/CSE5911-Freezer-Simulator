@@ -145,6 +145,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
 
 function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
   const grid = Array<BoxPosition | null>(81).fill(null);
+  const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
   box.positions.forEach((pos) => {
     const idx = (pos.row - 1) * 9 + (pos.column - 1);
@@ -180,5 +181,15 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, rea
   }
 
   return html;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]!);
 }
 

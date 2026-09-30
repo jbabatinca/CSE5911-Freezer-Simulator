@@ -3,6 +3,7 @@ import { HomeView } from './HomeView.js';
 import { AdminModeHomeView } from './AdminModeHomeView.js';
 import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
+import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, setTrainingQuestionMode, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
 import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
@@ -677,7 +678,7 @@ export function App(): void {
         // ===== SAMPLE BUTTONS =====
         // Add Sample
         document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-sample-', '').split('-');
                 const boxRow = parseInt(coords[0]!);
                 const boxCol = parseInt(coords[1]!);
