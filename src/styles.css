@@ -195,3 +195,493 @@ body {
   color: #fff;
   font-weight: bold;
 }
+
+.freezer-editor .btn-assign-specimen {
+  padding: 0;
+  border: 1px solid #205d23;
+  color: #205d23;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.freezer-editor .btn-assign-specimen:hover,
+.freezer-editor .btn-assign-specimen:focus-visible {
+  background: #e5f2e5;
+}
+
+.specimen-name-dialog {
+  width: min(420px, calc(100vw - 32px));
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #777;
+  border-top: 4px solid #36796b;
+  color: #222;
+}
+
+.specimen-name-dialog::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.specimen-name-form {
+  display: grid;
+  gap: 12px;
+}
+
+.specimen-name-form h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.specimen-name-form input {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #999;
+  font: inherit;
+}
+
+.specimen-name-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.specimen-name-actions button {
+  min-height: 38px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.specimen-name-actions .btn-cancel {
+  border: 1px solid #999;
+  background: #fff;
+  color: #333;
+}
+
+.training-view {
+  max-width: 820px;
+  margin: 28px auto;
+  color: #183b36;
+}
+
+.training-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0;
+  border-bottom: 1px solid #d8e2de;
+}
+
+.training-heading h1,
+.training-view > h1 {
+  margin: 4px 0 8px;
+  font-size: 30px;
+}
+
+.training-heading p {
+  margin: 0;
+  color: #536762;
+}
+
+.training-eyebrow {
+  margin: 0;
+  color: #b4512b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.training-layout-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  padding-top: 20px;
+}
+
+.training-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 94px;
+  padding: 18px;
+  border: 1px solid #cbd8d3;
+  border-left: 4px solid #36796b;
+  background: #f4f8f6;
+  color: #183b36;
+  cursor: pointer;
+  text-align: left;
+}
+
+.training-layout:hover,
+.training-layout:focus-visible {
+  border-color: #36796b;
+  background: #e9f2ee;
+}
+
+.training-layout-name {
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.training-layout-meta {
+  color: #536762;
+  font-size: 14px;
+}
+
+.training-empty {
+  margin-top: 24px;
+  padding: 18px;
+  border-left: 4px solid #d97838;
+  background: #fbf4ed;
+  color: #5a5048;
+  line-height: 1.5;
+}
+
+.training-back {
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: #28685d;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.training-active-heading {
+  align-items: center;
+}
+
+.training-score {
+  flex: 0 0 auto;
+  padding: 10px 14px !important;
+  border: 1px solid #d8e2de;
+  background: #f4f8f6;
+  color: #536762;
+  white-space: nowrap;
+}
+
+.training-score strong {
+  color: #28685d;
+  font-size: 20px;
+}
+
+.training-score span {
+  padding: 0 4px;
+  color: #a3b1ab;
+}
+
+.training-question {
+  max-width: 620px;
+  margin: 28px auto;
+  padding: 24px;
+  border: 1px solid #d8e2de;
+  background: #fbfcfb;
+}
+
+.training-prompt {
+  margin: 0 0 6px;
+  color: #536762;
+}
+
+.training-question h2 {
+  margin: 0 0 22px;
+  color: #183b36;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.training-options {
+  display: grid;
+  gap: 8px;
+}
+
+.training-option {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #cad7d1;
+  background: #fff;
+  color: #263b36;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.training-option:hover:not(:disabled),
+.training-option:focus-visible {
+  border-color: #36796b;
+  background: #eef5f1;
+}
+
+.training-option:disabled {
+  cursor: default;
+}
+
+.training-option.is-correct {
+  border-color: #32745b;
+  background: #e8f3eb;
+  color: #21543f;
+}
+
+.training-option.is-incorrect {
+  border-color: #b4512b;
+  background: #fbefea;
+  color: #843c22;
+}
+
+.training-feedback {
+  margin: 16px 0 0;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.training-feedback.is-correct {
+  color: #286548;
+}
+
+.training-feedback.is-incorrect {
+  color: #923f24;
+}
+
+.training-next {
+  margin-top: 18px;
+  padding: 11px 16px;
+  border: 0;
+  background: #28685d;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.training-next:hover,
+.training-next:focus-visible {
+  background: #1c5047;
+}
+
+@media (max-width: 600px) {
+  .training-view {
+    margin: 16px auto;
+  }
+
+  .training-heading,
+  .training-active-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .training-question {
+    margin: 20px 0;
+    padding: 18px;
+  }
+
+  .training-heading h1,
+  .training-view > h1 {
+    font-size: 26px;
+  }
+}
+
+.training-view {
+  max-width: 1100px;
+  color: #222;
+}
+
+.training-editor .training-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.training-mode-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.training-mode-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #999;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  font: inherit;
+}
+
+.training-mode-button.is-active {
+  border-color: #205d23;
+  background: #e5f2e5;
+  color: #205d23;
+  font-weight: 700;
+}
+
+.training-mode-button:disabled {
+  color: #888;
+  cursor: not-allowed;
+}
+
+.training-editor .training-question {
+  max-width: none;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid #d8e2de;
+  border-left: 4px solid #36796b;
+  background: #f4f8f6;
+}
+
+.training-editor .training-question h2 {
+  margin: 4px 0;
+  font-size: 20px;
+}
+
+.training-editor .training-prompt-detail {
+  margin: 6px 0 0;
+  color: #536762;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.training-editor .editor-content > h2 {
+  margin-bottom: 4px;
+}
+
+.training-editor .editor-content > p {
+  margin-top: 4px;
+}
+
+.training-editor .box-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.training-editor .box-container,
+.training-editor .box-slot {
+  min-width: 0;
+  min-height: 60px;
+  border: 2px solid #4caf50;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.training-editor .training-box-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  min-height: 56px;
+  padding: 8px;
+  color: #222;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.training-editor .training-box-name {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.training-editor .training-box-slot,
+.training-editor .training-box-toggle span {
+  flex: 0 0 auto;
+  color: #536762;
+  font-size: 12px;
+}
+
+.training-editor .training-box-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: #222;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+}
+
+.training-editor .training-box-target:hover:not(:disabled),
+.training-editor .training-box-toggle:hover {
+  background: #e5f2e5;
+}
+
+.training-editor .training-box-target:disabled,
+.training-editor .training-specimen-target:disabled {
+  cursor: default;
+}
+
+.training-editor .training-box-target.is-correct,
+.training-editor .training-specimen-target.is-correct {
+  border-color: #205d23;
+  background: #d5ead7;
+  color: #17451a;
+}
+
+.training-editor .training-box-target.is-incorrect,
+.training-editor .training-specimen-target.is-incorrect {
+  border-color: #b23b2b;
+  background: #f8e1dc;
+  color: #7b281d;
+}
+
+.training-editor .training-empty-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  border: 2px dashed #999;
+  color: #666;
+  font-size: 12px;
+}
+
+.training-editor .box-details {
+  margin-top: 14px;
+}
+
+.training-editor .box-positions-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(24px, 1fr));
+  gap: 2px;
+}
+
+.training-editor .training-specimen-target {
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.training-editor .training-unassigned-position {
+  border-color: #ddd;
+  background: #f4f4f4;
+  color: #888;
+}
+
+.training-editor .training-next {
+  margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+  .training-editor .box-grid {
+    grid-template-columns: repeat(4, minmax(46px, 1fr));
+  }
+
+  .training-editor .box-positions-grid {
+    grid-template-columns: repeat(9, minmax(22px, 1fr));
+  }
+}

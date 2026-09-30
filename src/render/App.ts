@@ -1,7 +1,7 @@
 import {getCurrentMode, setMode } from '../state/modeState.js';
 import { HomeView } from './HomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
-import { TrainingModeView } from './TrainingModeView.js';
+import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, setTrainingQuestionMode, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
 import { Navigation } from './Navigation.js';
 import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationState.js';
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
@@ -11,13 +11,49 @@ import {
   addShelf, removeShelf, 
   addRack, removeRack, 
   addBox, removeBox, 
-  addSample, removeSample 
+    addSample, assignSampleToPosition, removeSample
 } from '../services/FreezerService.js';
 import { 
   getExpandedShelfId, setExpandedShelfId,
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
+
+function requestSpecimenName(): Promise<string | null> {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'specimen-name-dialog';
+        dialog.innerHTML = `
+            <form class="specimen-name-form">
+                <h2 id="specimen-name-title">Add specimen</h2>
+                <label for="specimen-name-input">Specimen name</label>
+                <input id="specimen-name-input" name="specimenName" type="text" maxlength="120" required autofocus>
+                <div class="specimen-name-actions">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-save">Add specimen</button>
+                </div>
+            </form>
+        `;
+
+        const form = dialog.querySelector('form')!;
+        const input = dialog.querySelector('input')!;
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const specimenName = input.value.trim();
+            if (specimenName) dialog.close(specimenName);
+        });
+        dialog.querySelector('.btn-cancel')!.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => {
+            const specimenName = dialog.returnValue.trim();
+            dialog.remove();
+            resolve(specimenName || null);
+        }, { once: true });
+
+        document.body.append(dialog);
+        dialog.showModal();
+        input.focus();
+    });
+}
 
 
 export function App(): void {
@@ -75,6 +111,64 @@ export function App(): void {
         if (btnHome) {
             btnHome.addEventListener('click', () => {
                 setMode('home');
+                render();
+            });
+        }
+
+        document.querySelectorAll('[id^="training-layout-"]').forEach(button => {
+            button.addEventListener('click', () => {
+                selectTrainingLayout(button.id.replace('training-layout-', ''));
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-mode]').forEach(button => {
+            button.addEventListener('click', () => {
+                setTrainingQuestionMode(button.getAttribute('data-training-mode') as 'mixed' | 'boxes' | 'specimens');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-target]').forEach(button => {
+            button.addEventListener('click', () => {
+                answerTrainingTarget(button.getAttribute('data-training-target') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-shelf]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingShelf(button.getAttribute('data-training-toggle-shelf') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-rack]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingRack(button.getAttribute('data-training-toggle-rack') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-box]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingBox(button.getAttribute('data-training-toggle-box') ?? '');
+                render();
+            });
+        });
+
+        const btnTrainingBack = document.getElementById('btn-training-back');
+        if (btnTrainingBack) {
+            btnTrainingBack.addEventListener('click', () => {
+                selectTrainingLayout('');
+                render();
+            });
+        }
+
+        const btnTrainingNext = document.getElementById('btn-training-next');
+        if (btnTrainingNext) {
+            btnTrainingNext.addEventListener('click', () => {
+                nextTrainingQuestion();
                 render();
             });
         }
@@ -375,7 +469,7 @@ export function App(): void {
         // ===== SAMPLE BUTTONS =====
         // Add Sample
         document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-sample-', '').split('-');
                 const boxRow = parseInt(coords[0]!);
                 const boxCol = parseInt(coords[1]!);
@@ -386,14 +480,28 @@ export function App(): void {
                 const expandedRackId = getExpandedRackId();
 
                 if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const specimenName = await requestSpecimenName();
+                if (!specimenName) return;
 
                 const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
                 const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
 
                 if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol);
+                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol, specimenName);
                     render();
                 }
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-assign-specimen-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const specimenName = await requestSpecimenName();
+                if (!currentLayout || !specimenName) return;
+                const positionId = btn.id.replace('btn-assign-specimen-', '');
+                assignSampleToPosition(currentLayout, positionId, specimenName);
+                render();
             });
         });
 

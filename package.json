@@ -25,5 +25,8 @@
     "parcel": "^2.16.4",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
+  },
+  "directories": {
+    "doc": "docs"
   }
 }

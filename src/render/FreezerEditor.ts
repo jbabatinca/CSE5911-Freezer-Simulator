@@ -69,7 +69,7 @@ export function FreezerEditor(layout: SavedLayout): string {
 
                                   ${rackExpanded ? `
                                     <div class="rack-grid">
-                                      ${renderBoxGrid(rack, expandedBoxId)}
+                                      ${renderBoxGrid(rack, expandedBoxId, layout.freezerData.samples ?? [])}
                                     </div>
                                   ` : ''}
                                 </li>
@@ -90,7 +90,7 @@ export function FreezerEditor(layout: SavedLayout): string {
   `;
 }
 
-function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string {
+function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, samples: SavedLayout['freezerData']['samples']): string {
   let html = '<div class="box-grid">';
 
   for (let i = 0; i < rack.boxSlots.length; i++) {
@@ -124,7 +124,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string 
       <section class="box-details" aria-label="Box positions">
         <h5>${expandedSlot.box.name} — positions</h5>
         <div class="box-positions-grid">
-          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column)}
+          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column, samples)}
         </div>
       </section>
     `;
@@ -132,8 +132,9 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null): string 
   return html;
 }
 
-function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number): string {
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, samples: SavedLayout['freezerData']['samples']): string {
   const grid = Array<BoxPosition | null>(81).fill(null);
+  const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
   box.positions.forEach((pos) => {
     const idx = (pos.row - 1) * 9 + (pos.column - 1);
@@ -148,11 +149,18 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number): st
     const label = String.fromCharCode(64 + row) + col;
 
     if (pos) {
-      html += `
-        <div id="pos-${pos.id}" class="box-position position-filled">
-          ${label}
-        </div>
-      `;
+      const sampleName = pos.sampleId ? sampleNames.get(pos.sampleId) : undefined;
+      html += sampleName || pos.sampleId
+        ? `
+          <div id="pos-${pos.id}" class="box-position position-filled" title="${escapeHtml(sampleName ?? pos.sampleId!)}" aria-label="${label}: ${escapeHtml(sampleName ?? pos.sampleId!)}">
+            ${label}
+          </div>
+        `
+        : `
+          <button id="btn-assign-specimen-${pos.id}" class="box-position position-filled btn-assign-specimen" aria-label="Assign specimen to ${label}" title="Assign specimen">
+            ${label} +
+          </button>
+        `;
     } else {
       html += `
         <div class="box-position">
@@ -163,5 +171,15 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number): st
   }
 
   return html;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]!);
 }
 
