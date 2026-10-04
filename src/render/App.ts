@@ -3,7 +3,7 @@ import { HomeView } from './HomeView.js';
 import { AdminModeHomeView } from './AdminModeHomeView.js';
 import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
-import { TrainingModeView } from './TrainingModeView.js';
+import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -11,17 +11,54 @@ import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationS
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
 import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import {
-  addShelf, removeShelf,
-  addRack, removeRack,
-  addBox, removeBox,
-  addSample, removeSample
+import { 
+  addShelf, removeShelf, 
+  addRack, removeRack, 
+  addBox, removeBox, 
+    addSample, assignSampleToPosition, renameBox, removeSample
 } from '../services/FreezerService.js';
 import {
   getExpandedShelfId, setExpandedShelfId,
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
+
+function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'name-entry-dialog';
+        dialog.innerHTML = `
+            <form class="name-entry-form">
+                <h2>${title}</h2>
+                <label for="name-entry-input">${label}</label>
+                <input id="name-entry-input" name="name" type="text" value="${initialValue}" maxlength="120" required autofocus>
+                <div class="name-entry-actions">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-save">${submitLabel}</button>
+                </div>
+            </form>
+        `;
+
+        const form = dialog.querySelector('form')!;
+        const input = dialog.querySelector('input')!;
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const name = input.value.trim();
+            if (name) dialog.close(name);
+        });
+        dialog.querySelector('.btn-cancel')!.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => {
+            const name = dialog.returnValue.trim();
+            dialog.remove();
+            resolve(name || null);
+        }, { once: true });
+
+        document.body.append(dialog);
+        dialog.showModal();
+        input.focus();
+        if (initialValue) input.select();
+    });
+}
 import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, changeAdminPassword } from '../state/authState.js';
 
 
@@ -254,6 +291,60 @@ export function App(): void {
         if (btnUserTraining) {
             btnUserTraining.addEventListener('click', () => {
                 setMode('training');
+                render();
+            });
+        }
+
+        document.querySelectorAll('[id^="training-layout-"]').forEach(button => {
+            button.addEventListener('click', () => {
+                selectTrainingLayout(button.id.replace('training-layout-', ''));
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-target]').forEach(button => {
+            button.addEventListener('click', () => {
+                answerTrainingTarget(button.getAttribute('data-training-target') ?? '');
+                render();
+                const questionPanel = document.getElementById('training-question-panel');
+                questionPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                questionPanel?.focus({ preventScroll: true });
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-shelf]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingShelf(button.getAttribute('data-training-toggle-shelf') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-rack]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingRack(button.getAttribute('data-training-toggle-rack') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-box]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingBox(button.getAttribute('data-training-toggle-box') ?? '');
+                render();
+            });
+        });
+
+        const btnTrainingBack = document.getElementById('btn-training-back');
+        if (btnTrainingBack) {
+            btnTrainingBack.addEventListener('click', () => {
+                selectTrainingLayout('');
+                render();
+            });
+        }
+
+        const btnTrainingNext = document.getElementById('btn-training-next');
+        if (btnTrainingNext) {
+            btnTrainingNext.addEventListener('click', () => {
+                nextTrainingQuestion();
                 render();
             });
         }
@@ -509,7 +600,7 @@ export function App(): void {
         // ===== BOX BUTTONS =====
         // Add Box
         document.querySelectorAll('[id^="btn-add-box-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-box-', '').split('-');
                 const row = parseInt(coords[0]!);
                 const column = parseInt(coords[1]!);
@@ -517,12 +608,14 @@ export function App(): void {
                 const expandedShelfId = getExpandedShelfId();
                 const expandedRackId = getExpandedRackId();
                 if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const boxName = await requestName('Add box', 'Box name', 'Create box', `Box ${row}-${column}`);
+                if (!boxName) return;
                 
                 const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
                 const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
                 
                 if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addBox(currentLayout, shelfIndex, rackIndex, row, column);
+                    addBox(currentLayout, shelfIndex, rackIndex, row, column, boxName);
                 }
                 render();
             });
@@ -534,6 +627,26 @@ export function App(): void {
                 const boxId = btn.id.replace('btn-toggle-box-', '');
                 const isExpanded = getExpandedBoxId() === boxId;
                 setExpandedBoxId(isExpanded ? null : boxId);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-rename-box-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const boxId = btn.id.replace('btn-rename-box-', '');
+                const box = currentLayout.freezerData.shelves
+                    .flatMap(shelf => shelf.racks)
+                    .flatMap(rack => rack.boxSlots)
+                    .find(slot => slot.box?.id === boxId)?.box;
+                if (!box) return;
+
+                const boxName = await requestName('Rename box', 'Box name', 'Save name', box.name);
+                if (!boxName) return;
+                renameBox(currentLayout, boxId, boxName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
                 render();
             });
         });
@@ -575,14 +688,32 @@ export function App(): void {
                 const expandedRackId = getExpandedRackId();
 
                 if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
+                if (!specimenName) return;
 
                 const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
                 const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
 
                 if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol);
+                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol, specimenName);
+                    currentLayout.updatedAt = new Date().toISOString();
+                    saveLayout(currentLayout);
                     render();
                 }
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-assign-specimen-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
+                if (!currentLayout || !specimenName) return;
+                const positionId = btn.id.replace('btn-assign-specimen-', '');
+                assignSampleToPosition(currentLayout, positionId, specimenName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
             });
         });
 
