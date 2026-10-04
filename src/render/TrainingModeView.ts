@@ -2,30 +2,19 @@ import type { SavedLayout } from '../models/SavedLayout.js';
 import type { FreezerBox } from '../models/freezerLayout.js';
 import { getAllLayouts } from '../services/StorageService.js';
 
-type QuestionMode = 'mixed' | 'boxes' | 'specimens';
-type TargetKind = 'box' | 'specimen';
-
 interface TrainingTarget {
     key: string;
-    kind: TargetKind;
     label: string;
     identifier: string;
-    parentAddress: string;
     address: string;
-    shelfId: string;
-    rackId: string;
-    boxId: string;
-    slotRow: number;
-    slotColumn: number;
-    positionId?: string;
-    positionLabel?: string;
 }
 
 let selectedLayoutId: string | null = null;
-let questionMode: QuestionMode = 'mixed';
 let currentTargetKey: string | null = null;
 let selectedTargetKey: string | null = null;
 let questionAnswered = false;
+let questionStartedAt = 0;
+let lastQuestionDurationMs: number | null = null;
 let correctAnswers = 0;
 let answeredQuestions = 0;
 let expandedShelfId: string | null = null;
@@ -50,51 +39,25 @@ function getTrainingTargets(layout: SavedLayout): TrainingTarget[] {
             rack.boxSlots.flatMap(slot => {
                 if (!slot.box) return [];
 
-                const address = `${shelf.name} / ${rack.name} / rack slot R${slot.row}C${slot.column}`;
-                const parentAddress = `${shelf.name} / ${rack.name}`;
-                const boxTarget: TrainingTarget = {
-                    key: `box:${shelf.id}/${rack.id}/${slot.row}/${slot.column}/${slot.box.id}`,
-                    kind: 'box',
-                    label: slot.box.name,
-                    identifier: slot.box.id,
-                    parentAddress,
-                    address,
-                    shelfId: shelf.id,
-                    rackId: rack.id,
-                    boxId: slot.box.id,
-                    slotRow: slot.row,
-                    slotColumn: slot.column
-                };
+                const defaultBoxName = `Box ${slot.row}-${slot.column}`;
+                const boxNumber = slot.box.name === defaultBoxName
+                    ? defaultBoxName
+                    : `${defaultBoxName} (${slot.box.name})`;
                 const specimenTargets = slot.box.positions.flatMap(position => {
                     if (!position.sampleId) return [];
                     const specimen = samples.get(position.sampleId);
                     return [{
                         key: `specimen:${shelf.id}/${rack.id}/${slot.box!.id}/${position.id}`,
-                        kind: 'specimen' as const,
-                        label: specimen?.name ?? position.sampleId,
-                        identifier: position.sampleId,
-                        parentAddress,
-                        address: `${address} / ${slot.box!.name} / position ${position.label}`,
-                        shelfId: shelf.id,
-                        rackId: rack.id,
-                        boxId: slot.box!.id,
-                        slotRow: slot.row,
-                        slotColumn: slot.column,
-                        positionId: position.id,
-                        positionLabel: position.label
+                        label: specimen?.name || `Specimen ID ${position.sampleId}`,
+                        identifier: position.sampleId ?? position.id,
+                        address: `${shelf.name} / ${rack.name} / ${boxNumber} / Position ${position.label}`
                     }];
                 });
 
-                return [boxTarget, ...specimenTargets];
+                return specimenTargets;
             })
         )
     );
-}
-
-function getModeTargets(targets: TrainingTarget[]): TrainingTarget[] {
-    if (questionMode === 'boxes') return targets.filter(target => target.kind === 'box');
-    if (questionMode === 'specimens') return targets.filter(target => target.kind === 'specimen');
-    return targets;
 }
 
 function resetExpandedLocation(): void {
@@ -104,41 +67,26 @@ function resetExpandedLocation(): void {
 }
 
 function startQuestion(targets: TrainingTarget[]): void {
-    const eligibleTargets = getModeTargets(targets);
-    const targetKinds = questionMode === 'mixed'
-        ? [...new Set(eligibleTargets.map(target => target.kind))]
-        : [];
-    const selectedKind = targetKinds.length > 0
-        ? targetKinds[Math.floor(Math.random() * targetKinds.length)]
-        : undefined;
-    const kindTargets = selectedKind ? eligibleTargets.filter(target => target.kind === selectedKind) : eligibleTargets;
-    const availableTargets = kindTargets.length > 1
-        ? kindTargets.filter(target => target.key !== currentTargetKey)
-        : kindTargets;
+    const availableTargets = targets.length > 1
+        ? targets.filter(target => target.key !== currentTargetKey)
+        : targets;
     const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
     currentTargetKey = target?.key ?? null;
     selectedTargetKey = null;
     questionAnswered = false;
+    questionStartedAt = Date.now();
+    lastQuestionDurationMs = null;
     resetExpandedLocation();
 }
 
 export function selectTrainingLayout(layoutId: string): void {
     selectedLayoutId = layoutId;
-    questionMode = 'mixed';
     currentTargetKey = null;
     selectedTargetKey = null;
     questionAnswered = false;
+    lastQuestionDurationMs = null;
     correctAnswers = 0;
     answeredQuestions = 0;
-    resetExpandedLocation();
-}
-
-export function setTrainingQuestionMode(mode: QuestionMode): void {
-    if (questionMode === mode) return;
-    questionMode = mode;
-    currentTargetKey = null;
-    selectedTargetKey = null;
-    questionAnswered = false;
     resetExpandedLocation();
 }
 
@@ -146,6 +94,7 @@ export function answerTrainingTarget(targetKey: string): void {
     if (questionAnswered || !currentTargetKey) return;
     selectedTargetKey = targetKey;
     questionAnswered = true;
+    lastQuestionDurationMs = Math.max(0, Date.now() - questionStartedAt);
     answeredQuestions++;
     if (targetKey === currentTargetKey) correctAnswers++;
 }
@@ -154,6 +103,7 @@ export function nextTrainingQuestion(): void {
     currentTargetKey = null;
     selectedTargetKey = null;
     questionAnswered = false;
+    lastQuestionDurationMs = null;
     resetExpandedLocation();
 }
 
@@ -172,26 +122,13 @@ export function toggleTrainingBox(boxId: string): void {
     expandedBoxId = expandedBoxId === boxId ? null : boxId;
 }
 
-function renderBoxGrid(shelfId: string, rackId: string, slot: SavedLayout['freezerData']['shelves'][number]['racks'][number]['boxSlots'][number], target: TrainingTarget): string {
+function renderBoxGrid(slot: SavedLayout['freezerData']['shelves'][number]['racks'][number]['boxSlots'][number]): string {
     const box = slot.box!;
-    if (target.kind === 'box') {
-        const isCorrect = questionAnswered && target.key === currentTargetKey;
-        const isWrongSelection = questionAnswered && selectedTargetKey === `box:${shelfId}/${rackId}/${slot.row}/${slot.column}/${box.id}` && !isCorrect;
-        const stateClass = isCorrect ? ' is-correct' : isWrongSelection ? ' is-incorrect' : '';
-        const trainingKey = `box:${shelfId}/${rackId}/${slot.row}/${slot.column}/${box.id}`;
-        return `
-            <button class="box-container training-box-target${stateClass}" data-training-target="${escapeHtml(trainingKey)}" ${questionAnswered ? 'disabled' : ''}>
-                <span class="training-box-name">${escapeHtml(box.name)}</span>
-                <span class="training-box-slot">R${slot.row}C${slot.column}</span>
-            </button>
-        `;
-    }
-
     const boxExpanded = expandedBoxId === box.id;
     return `
         <div class="box-container${boxExpanded ? ' box-selected' : ''}">
             <button class="box-toggle training-box-toggle" data-training-toggle-box="${escapeHtml(box.id)}" aria-expanded="${boxExpanded}">
-                ${boxExpanded ? '▼' : '▶'} ${escapeHtml(box.name)} <span>R${slot.row}C${slot.column}</span>
+                ${boxExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}
             </button>
         </div>
     `;
@@ -211,14 +148,14 @@ function renderPositionGrid(layout: SavedLayout, shelfId: string, rackId: string
             }
 
             const key = `specimen:${shelfId}/${rackId}/${box.id}/${position.id}`;
+            const isCorrect = questionAnswered && target.key === key;
+            const isWrongSelection = questionAnswered && selectedTargetKey === key && !isCorrect;
             if (position.sampleId) {
-                const isCorrect = questionAnswered && target.key === key;
-                const isWrongSelection = questionAnswered && selectedTargetKey === key && !isCorrect;
-                const specimenName = samples.get(position.sampleId)?.name ?? position.sampleId;
+                const specimenName = samples.get(position.sampleId)?.name || `Specimen ID ${position.sampleId}`;
                 const stateClass = isCorrect ? ' is-correct' : isWrongSelection ? ' is-incorrect' : '';
-                html += `<button class="box-position position-filled training-specimen-target${stateClass}" data-training-target="${escapeHtml(key)}" title="${escapeHtml(specimenName)}${questionAnswered ? '' : ' (' + escapeHtml(position.sampleId) + ')'}" ${questionAnswered ? 'disabled' : ''}>${escapeHtml(position.label)}</button>`;
+                html += `<button class="box-position position-filled training-specimen-target${stateClass}" data-training-target="${escapeHtml(key)}" title="${escapeHtml(specimenName)}" ${questionAnswered ? 'disabled' : ''}>${escapeHtml(position.label)}</button>`;
             } else {
-                html += `<div class="box-position position-filled training-unassigned-position" title="Unassigned position">${escapeHtml(position.label)}</div>`;
+                html += `<div class="box-position position-filled training-unassigned-position" title="No specimen linked">${escapeHtml(position.label)}</div>`;
             }
         }
     }
@@ -232,10 +169,10 @@ function renderTrainingRack(layout: SavedLayout, shelfId: string, rack: SavedLay
     const boxCount = rack.boxSlots.filter(slot => slot.box !== null).length;
     const rackContents = rackExpanded
         ? `<div class="rack-grid"><div class="box-grid">${rack.boxSlots.map(slot => slot.box
-            ? renderBoxGrid(shelfId, rack.id, slot, target)
-            : `<div class="box-slot empty training-empty-slot" aria-label="Empty rack slot R${slot.row}C${slot.column}">R${slot.row}C${slot.column}</div>`).join('')}</div></div>`
+            ? renderBoxGrid(slot)
+            : `<div class="box-slot empty training-empty-slot" aria-label="Empty rack slot R${slot.row}C${slot.column}"></div>`).join('')}</div></div>`
         : '';
-    const positions = rackExpanded && target.kind === 'specimen'
+    const positions = rackExpanded
         ? rack.boxSlots.map(slot => slot.box?.id === expandedBoxId
             ? renderPositionGrid(layout, shelfId, rack.id, slot, target)
             : '').join('')
@@ -280,11 +217,6 @@ function renderFreezerMap(layout: SavedLayout, target: TrainingTarget): string {
     return `<section class="freezer" aria-label="Freezer layout map">${shelves}</section>`;
 }
 
-function renderModeButton(mode: QuestionMode, label: string, disabled = false): string {
-    const active = questionMode === mode;
-    return `<button class="training-mode-button${active ? ' is-active' : ''}" data-training-mode="${mode}" aria-pressed="${active}" ${disabled ? 'disabled' : ''}>${label}</button>`;
-}
-
 export function TrainingModeView(): string {
     const layouts = getAllLayouts();
     const selectedLayout = layouts.find(layout => layout.id === selectedLayoutId);
@@ -293,12 +225,10 @@ export function TrainingModeView(): string {
         selectedLayoutId = null;
         const layoutCards = layouts.map(layout => {
             const targets = getTrainingTargets(layout);
-            const boxes = targets.filter(target => target.kind === 'box').length;
-            const specimens = targets.filter(target => target.kind === 'specimen').length;
             return `
                 <button class="training-layout" id="training-layout-${escapeHtml(layout.id)}">
                     <span class="training-layout-name">${escapeHtml(layout.name)}</span>
-                    <span class="training-layout-meta">${boxes} ${boxes === 1 ? 'box' : 'boxes'} · ${specimens} ${specimens === 1 ? 'specimen' : 'specimens'}</span>
+                    <span class="training-layout-meta">${targets.length} ${targets.length === 1 ? 'specimen' : 'specimens'}</span>
                 </button>
             `;
         }).join('');
@@ -320,44 +250,31 @@ export function TrainingModeView(): string {
     }
 
     const targets = getTrainingTargets(selectedLayout);
-    const boxTargets = targets.filter(target => target.kind === 'box');
-    const specimenTargets = targets.filter(target => target.kind === 'specimen');
-    const eligibleTargets = getModeTargets(targets);
 
-    if (questionMode === 'specimens' && specimenTargets.length === 0) {
+    if (targets.length === 0) {
         return `
             <section class="training-view">
                 <button id="btn-training-back" class="training-back">&larr; All layouts</button>
                 <h1>${escapeHtml(selectedLayout.name)}</h1>
-                <p class="training-empty">This layout has no named specimens assigned to positions. Add specimens to occupied positions in Configuration Mode, save the layout, then return here.</p>
+                <p class="training-empty">This layout has no linked specimens. Assign a specimen to each occupied position in Configuration Mode, save the layout, then return here.</p>
             </section>
         `;
     }
 
-    if (eligibleTargets.length === 0) {
-        return `
-            <section class="training-view">
-                <button id="btn-training-back" class="training-back">&larr; All layouts</button>
-                <h1>${escapeHtml(selectedLayout.name)}</h1>
-                <p class="training-empty">This layout has no boxes yet. Add boxes in Configuration Mode, save the layout, then return here.</p>
-            </section>
-        `;
-    }
-
-    if (!currentTargetKey || !eligibleTargets.some(target => target.key === currentTargetKey)) startQuestion(targets);
+    if (!currentTargetKey || !targets.some(target => target.key === currentTargetKey)) startQuestion(targets);
     const target = targets.find(item => item.key === currentTargetKey)!;
     const isCorrect = selectedTargetKey === currentTargetKey;
+    const locationSummary = `Specimen ${target.label} is at ${target.address}.`;
+    const elapsedTime = lastQuestionDurationMs === null
+        ? ''
+        : ` It took ${(lastQuestionDurationMs / 1000).toFixed(1)} seconds to answer.`;
     const feedback = !questionAnswered
         ? ''
         : isCorrect
-            ? '<p class="training-feedback is-correct" role="status">Correct. You found the right location.</p>'
-            : `<p class="training-feedback is-incorrect" role="status">Not quite. The correct address is ${escapeHtml(target.address)}.</p>`;
-    const prompt = target.kind === 'box'
-        ? `Locate this box: ${target.label}`
-        : `Find specimen: ${target.label}`;
-    const promptDetail = target.kind === 'box'
-        ? `Unique box ID: ${target.identifier} · Located in ${target.parentAddress}`
-        : `Specimen ID: ${target.identifier}`;
+            ? `<p class="training-feedback is-correct" role="status">Correct. ${escapeHtml(locationSummary)}${elapsedTime}</p>`
+            : `<p class="training-feedback is-incorrect" role="status">Not quite. ${escapeHtml(locationSummary)}${elapsedTime}</p>`;
+    const prompt = `Find specimen: ${target.label}`;
+    const promptDetail = `Specimen ID: ${target.identifier}`;
 
     return `
         <section class="training-view training-editor">
@@ -369,15 +286,8 @@ export function TrainingModeView(): string {
                 </div>
                 <p class="training-score"><strong>${correctAnswers}</strong> correct <span>·</span> ${answeredQuestions} answered</p>
             </header>
-            <div class="training-toolbar">
-                <div class="training-mode-control" role="group" aria-label="Question type">
-                    ${renderModeButton('mixed', 'Mixed')}
-                    ${renderModeButton('boxes', `Boxes (${boxTargets.length})`, boxTargets.length === 0)}
-                    ${renderModeButton('specimens', `Specimens (${specimenTargets.length})`, specimenTargets.length === 0)}
-                </div>
-            </div>
-            <section class="training-question" aria-live="polite">
-                <p class="training-prompt">${target.kind === 'box' ? 'BOX LOCATION' : 'SPECIMEN LOCATION'}</p>
+            <section id="training-question-panel" class="training-question" tabindex="-1" aria-live="polite">
+                <p class="training-prompt">SPECIMEN LOCATION</p>
                 <h2>${escapeHtml(prompt)}</h2>
                 <p class="training-prompt-detail">${escapeHtml(promptDetail)}</p>
                 ${feedback}
@@ -385,7 +295,7 @@ export function TrainingModeView(): string {
             </section>
             <div class="editor-content">
                 <h2>Freezer layout</h2>
-                <p>${target.kind === 'box' ? 'Expand a shelf and rack, then select the matching box slot.' : 'Expand a shelf, rack, and box, then select the specimen position.'}</p>
+                <p>Expand a shelf, rack, and box, then select the specimen position.</p>
                 ${renderFreezerMap(selectedLayout, target)}
             </div>
         </section>
