@@ -3,9 +3,7 @@ import type { SavedLayout } from '../models/SavedLayout.js';
 // Get all saved layouts
 export function getAllLayouts(): SavedLayout[] {
   const stored = localStorage.getItem('freezer-layouts');
-  console.log('Raw stored value:', stored);  // Should be here
   const result = stored ? JSON.parse(stored) : [];
-  console.log('Parsed result:', result);  // Should be here
   return result;
 }
 

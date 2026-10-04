@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import freezerData from '../data/sample-freezer-layout.json';
+import freezerData from '../../src/data/sample-freezer-layout.json';
 
 describe('Freezer Layout Schema', () => {
   it('should have valid freezer structure', () => {
