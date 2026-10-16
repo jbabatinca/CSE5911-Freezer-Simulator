@@ -73,7 +73,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
 
                                   ${rackExpanded ? `
                                     <div class="rack-grid">
-                                      ${renderBoxGrid(rack, expandedBoxId, readOnly)}
+                                      ${renderBoxGrid(rack, expandedBoxId, readOnly, layout.freezerData.samples ?? [])}
                                     </div>
                                   ` : ''}
                                 </li>
@@ -94,7 +94,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
   `;
 }
 
-function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean = false): string {
+function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
   let html = '<div class="box-grid">';
 
   for (let i = 0; i < rack.boxSlots.length; i++) {
@@ -108,6 +108,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
             ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/81)
           </button>
+          ${!readOnly ? `<button id="btn-rename-box-${slot.box!.id}" class="btn-rename-box" aria-label="Rename ${escapeHtml(slot.box!.name)}">Rename</button>` : ''}
           ${!readOnly ? `<button id="btn-remove-box-${slot.row}-${slot.column}" class="btn-remove-box" title="Remove box" style="position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; padding: 0; font-size: 14px; min-width: auto;">✕</button>` : ''}
         </div>
       `;
@@ -134,7 +135,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       <section class="box-details" aria-label="Box positions">
         <h5>${expandedSlot.box.name} — positions</h5>
         <div class="box-positions-grid">
-          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column, readOnly)}
+          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column, readOnly, samples)}
         </div>
       </section>
     `;
@@ -142,8 +143,9 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
   return html;
 }
 
-function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean = false): string {
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
   const grid = Array<BoxPosition | null>(81).fill(null);
+  const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
   box.positions.forEach((pos) => {
     const idx = (pos.row - 1) * 9 + (pos.column - 1);
@@ -179,5 +181,15 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, rea
   }
 
   return html;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]!);
 }
 
