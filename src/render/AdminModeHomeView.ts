@@ -9,7 +9,7 @@ export function AdminModeHomeView(): string {
                 Configuration Mode
             </button>
             <button id="btn-admin-training" class="mode-button">
-                Training Mode
+                Question Set Creator Mode
             </button>
         </div>
     </div>

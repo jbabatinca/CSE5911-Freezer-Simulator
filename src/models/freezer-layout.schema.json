@@ -29,6 +29,10 @@
       "type": "string",
       "minLength": 1
     },
+    "colorHex": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
     "shelf": {
       "type": "object",
       "additionalProperties": false,
@@ -59,6 +63,9 @@
         },
         "name": {
           "$ref": "#/$defs/nonEmptyString"
+        },
+        "color": {
+          "$ref": "#/$defs/colorHex"
         },
         "boxSlots": {
           "type": "array",
@@ -107,6 +114,9 @@
         },
         "name": {
           "$ref": "#/$defs/nonEmptyString"
+        },
+        "color": {
+          "$ref": "#/$defs/colorHex"
         },
         "rows": {
           "type": "integer",

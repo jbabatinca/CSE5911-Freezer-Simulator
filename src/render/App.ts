@@ -3,8 +3,8 @@ import { HomeView } from './HomeView.js';
 import { AdminModeHomeView } from './AdminModeHomeView.js';
 import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
-import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, setTrainingQuestionMode, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
-import { TrainingModeView, selectTrainingLayout, answerTrainingTarget, nextTrainingQuestion, toggleTrainingShelf, toggleTrainingRack, toggleTrainingBox } from './TrainingModeView.js';
+import { TutorialTrainingModeView, startTrainingTutorial, answerTrainingTarget, toggleTrainingRack, toggleTrainingBox } from './TutorialTrainingModeView.js';
+import { QuestionSetCreatorView } from './QuestionSetCreatorView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -14,9 +14,9 @@ import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../servic
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { 
   addShelf, removeShelf, 
-  addRack, removeRack, 
-  addBox, removeBox, 
-    addSample, assignSampleToPosition, renameBox, removeSample
+        addRack, removeRack, renameRack, setRackColor,
+    addBox, removeBox, setBoxColor,
+    addSample, assignSampleToPosition, renameBox, renameSample, removeSample
 } from '../services/FreezerService.js';
 import {
   getExpandedShelfId, setExpandedShelfId,
@@ -32,7 +32,7 @@ function requestName(title: string, label: string, submitLabel: string, initialV
             <form class="name-entry-form">
                 <h2>${title}</h2>
                 <label for="name-entry-input">${label}</label>
-                <input id="name-entry-input" name="name" type="text" value="${initialValue}" maxlength="120" required autofocus>
+                <input id="name-entry-input" name="name" type="text" maxlength="120" required autofocus>
                 <div class="name-entry-actions">
                     <button type="button" class="btn-cancel">Cancel</button>
                     <button type="submit" class="btn-save">${submitLabel}</button>
@@ -42,6 +42,7 @@ function requestName(title: string, label: string, submitLabel: string, initialV
 
         const form = dialog.querySelector('form')!;
         const input = dialog.querySelector('input')!;
+        input.value = initialValue;
         form.addEventListener('submit', event => {
             event.preventDefault();
             const name = input.value.trim();
@@ -60,7 +61,7 @@ function requestName(title: string, label: string, submitLabel: string, initialV
         if (initialValue) input.select();
     });
 }
-import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, changeAdminPassword } from '../state/authState.js';
+import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 
 
 export function App(): void {
@@ -95,7 +96,7 @@ export function App(): void {
         } else if (mode === 'freezer-layouts') {
             html += ConfigurationModeView(true);
         } else if (mode === 'training') {
-            html += TrainingModeView();
+            html += isAdmin ? QuestionSetCreatorView() : TutorialTrainingModeView();
         }
 
         // Show modals if needed
@@ -140,6 +141,7 @@ export function App(): void {
 
         if (btnUserMode) {
             btnUserMode.addEventListener('click', () => {
+                switchToUserMode();
                 setMode('user-home');
                 render();
             });
@@ -291,17 +293,11 @@ export function App(): void {
 
         if (btnUserTraining) {
             btnUserTraining.addEventListener('click', () => {
+                startTrainingTutorial();
                 setMode('training');
                 render();
             });
         }
-
-        document.querySelectorAll('[id^="training-layout-"]').forEach(button => {
-            button.addEventListener('click', () => {
-                selectTrainingLayout(button.id.replace('training-layout-', ''));
-                render();
-            });
-        });
 
         document.querySelectorAll('[data-training-target]').forEach(button => {
             button.addEventListener('click', () => {
@@ -334,18 +330,10 @@ export function App(): void {
             });
         });
 
-        const btnTrainingBack = document.getElementById('btn-training-back');
-        if (btnTrainingBack) {
-            btnTrainingBack.addEventListener('click', () => {
-                selectTrainingLayout('');
-                render();
-            });
-        }
-
-        const btnTrainingNext = document.getElementById('btn-training-next');
-        if (btnTrainingNext) {
-            btnTrainingNext.addEventListener('click', () => {
-                nextTrainingQuestion();
+        const btnTutorialRestart = document.getElementById('btn-tutorial-restart');
+        if (btnTutorialRestart) {
+            btnTutorialRestart.addEventListener('click', () => {
+                startTrainingTutorial();
                 render();
             });
         }
@@ -581,6 +569,47 @@ export function App(): void {
             });
         });
 
+        document.querySelectorAll('[id^="btn-rename-rack-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const rackId = btn.id.replace('btn-rename-rack-', '');
+                const rack = currentLayout.freezerData.shelves
+                    .flatMap(shelf => shelf.racks)
+                    .find(item => item.id === rackId);
+                if (!rack) return;
+
+                const rackName = await requestName('Rename rack', 'Rack name', 'Save name', rack.name);
+                if (!rackName) return;
+                renameRack(currentLayout, rackId, rackName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-layout-color-kind]').forEach(button => {
+            button.addEventListener('click', () => {
+                const currentLayout = getCurrentEditingLayout();
+                const kind = button.getAttribute('data-layout-color-kind');
+                const itemId = button.getAttribute('data-layout-color-id');
+                const colorValue = button.getAttribute('data-layout-color-value');
+                if (!currentLayout || !itemId || !colorValue) return;
+
+                if (kind === 'rack') {
+                    setRackColor(currentLayout, itemId, colorValue);
+                } else if (kind === 'box') {
+                    setBoxColor(currentLayout, itemId, colorValue === 'inherit' ? null : colorValue);
+                } else {
+                    return;
+                }
+
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
         // Remove Rack
         document.querySelectorAll('[id^="btn-remove-rack-"]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -712,6 +741,22 @@ export function App(): void {
                 if (!currentLayout || !specimenName) return;
                 const positionId = btn.id.replace('btn-assign-specimen-', '');
                 assignSampleToPosition(currentLayout, positionId, specimenName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-rename-sample-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const sampleId = btn.id.replace('btn-rename-sample-', '');
+                const sample = currentLayout.freezerData.samples?.find(item => item.id === sampleId);
+
+                const sampleName = await requestName('Rename specimen', 'Specimen name', 'Save name', sample?.name ?? sampleId);
+                if (!sampleName) return;
+                renameSample(currentLayout, sampleId, sampleName);
                 currentLayout.updatedAt = new Date().toISOString();
                 saveLayout(currentLayout);
                 render();
