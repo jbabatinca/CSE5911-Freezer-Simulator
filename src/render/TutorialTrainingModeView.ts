@@ -111,6 +111,7 @@ let wrongAnswersThisLevel = 0;
 let currentQuestion: TutorialQuestion | null = null;
 let selectedTargetId: string | null = null;
 let questionStartedAt = 0;
+let tutorialStartedAt = 0;
 let feedbackMessage = '';
 let feedbackKind: FeedbackKind = 'progress';
 let tutorialComplete = false;
@@ -179,6 +180,7 @@ function startQuestion(): void {
 export function startTrainingTutorial(): void {
     currentLevel = 1;
     wrongAnswersThisLevel = 0;
+    tutorialStartedAt = Date.now();
     feedbackMessage = '';
     feedbackKind = 'progress';
     tutorialComplete = false;
@@ -196,7 +198,8 @@ export function answerTrainingTarget(targetId: string): void {
         if (finishedLevel === 3) {
             tutorialComplete = true;
             feedbackKind = 'complete';
-            feedbackMessage = `Correct. ${currentQuestion.address}. Tutorial completed in ${elapsed} seconds.`;
+            const totalElapsed = ((Date.now() - tutorialStartedAt) / 1000).toFixed(1);
+            feedbackMessage = `Correct. ${currentQuestion.address}. Tutorial completed in ${totalElapsed} seconds.`;
             return;
         }
 

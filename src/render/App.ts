@@ -309,13 +309,6 @@ export function App(): void {
             });
         });
 
-        document.querySelectorAll('[data-training-toggle-shelf]').forEach(button => {
-            button.addEventListener('click', () => {
-                toggleTrainingShelf(button.getAttribute('data-training-toggle-shelf') ?? '');
-                render();
-            });
-        });
-
         document.querySelectorAll('[data-training-toggle-rack]').forEach(button => {
             button.addEventListener('click', () => {
                 toggleTrainingRack(button.getAttribute('data-training-toggle-rack') ?? '');

@@ -5,8 +5,8 @@ export function UserModeHomeView(): string {
         <p>Practice freezer navigation with a guided tutorial.</p>
 
         <div class="mode-buttons">
-            <button id="btn-freezer-layouts" class="mode-button" disabled aria-disabled="true" title="Layout Mode is not available yet">
-                Layout Mode
+            <button id="btn-freezer-layouts" class="mode-button">
+                Layout View
             </button>
             <button id="btn-user-training" class="mode-button">
                 Tutorial Mode
