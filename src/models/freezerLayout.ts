@@ -47,6 +47,7 @@ export interface BoxPosition {
 export interface FreezerBox {
   id: string;
   name: string;
+  color?: string;
   rows: 9;
   columns: 9;
   positions: BoxPosition[];
@@ -68,6 +69,7 @@ export interface FreezerBoxSlot {
 export interface FreezerRack {
   id: string;
   name: string;
+  color?: string;
   boxSlots: FreezerBoxSlot[];
 }
 

@@ -49,6 +49,17 @@ export function addRack(layout: SavedLayout, shelfId: string): void {
   shelf.racks.push(newRack);
 }
 
+export function renameRack(layout: SavedLayout, rackId: string, rackName: string): void {
+  const rack = layout.freezerData.shelves.flatMap(shelf => shelf.racks).find(item => item.id === rackId);
+  if (rack) rack.name = rackName.trim();
+}
+
+export function setRackColor(layout: SavedLayout, rackId: string, color: string): void {
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  const rack = layout.freezerData.shelves.flatMap(shelf => shelf.racks).find(item => item.id === rackId);
+  if (rack) rack.color = color;
+}
+
 export function removeRack(layout: SavedLayout, shelfIndex: number, rackIndex: number): void {
   const freezer = layout.freezerData;
   if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;
@@ -58,7 +69,7 @@ export function removeRack(layout: SavedLayout, shelfIndex: number, rackIndex: n
 }
 
 // BOX operations
-export function addBox(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number): void {
+export function addBox(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, boxName?: string): void {
   const freezer = layout.freezerData;
   if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;
   const shelf = freezer.shelves[shelfIndex]!;
@@ -70,13 +81,39 @@ export function addBox(layout: SavedLayout, shelfIndex: number, rackIndex: numbe
 
   const newBox: FreezerBox = {
     id: generateId('box'),
-    name: `Box ${row}-${column}`,
+    name: boxName?.trim() || `Box ${row}-${column}`,
     rows: 9,
     columns: 9,
     positions: createEmptySamplePositions()
   };
 
   slot.box = newBox;
+}
+
+export function renameBox(layout: SavedLayout, boxId: string, boxName: string): void {
+  for (const shelf of layout.freezerData.shelves) {
+    for (const rack of shelf.racks) {
+      const box = rack.boxSlots.find(slot => slot.box?.id === boxId)?.box;
+      if (box) {
+        box.name = boxName.trim();
+        return;
+      }
+    }
+  }
+}
+
+export function setBoxColor(layout: SavedLayout, boxId: string, color: string | null): void {
+  if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  for (const shelf of layout.freezerData.shelves) {
+    for (const rack of shelf.racks) {
+      const box = rack.boxSlots.find(slot => slot.box?.id === boxId)?.box;
+      if (box) {
+        if (color === null) delete box.color;
+        else box.color = color;
+        return;
+      }
+    }
+  }
 }
 
 export function removeBox(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number): void {
@@ -94,6 +131,7 @@ export function removeBox(layout: SavedLayout, shelfIndex: number, rackIndex: nu
 
 // LAYOUT SAMPLES operations (manage samples in the freezer layout)
 export function createSample(layout: SavedLayout, name: string, description?: string): Sample {
+  layout.freezerData.samples ??= [];
   const newSample: Sample = {
     id: generateId('sample'),
     name,
@@ -101,6 +139,32 @@ export function createSample(layout: SavedLayout, name: string, description?: st
   };
   layout.freezerData.samples.push(newSample);
   return newSample;
+}
+
+export function renameSample(layout: SavedLayout, sampleId: string, sampleName: string): void {
+  layout.freezerData.samples ??= [];
+  const sample = layout.freezerData.samples.find(item => item.id === sampleId);
+  if (sample) {
+    sample.name = sampleName.trim();
+    return;
+  }
+
+  layout.freezerData.samples.push({ id: sampleId, name: sampleName.trim() });
+}
+
+export function assignSampleToPosition(layout: SavedLayout, positionId: string, sampleName: string): void {
+  for (const shelf of layout.freezerData.shelves) {
+    for (const rack of shelf.racks) {
+      for (const slot of rack.boxSlots) {
+        const position = slot.box?.positions.find(item => item.id === positionId);
+        if (!position || position.sampleId) continue;
+
+        const specimen = createSample(layout, sampleName.trim());
+        position.sampleId = specimen.id;
+        return;
+      }
+    }
+  }
 }
 
 export function removeSampleFromLayout(layout: SavedLayout, sampleId: string): void {
@@ -112,7 +176,7 @@ export function removeSampleFromLayout(layout: SavedLayout, sampleId: string): v
 }
 
 // BOX POSITION SAMPLES operations (assign samples to box positions)
-export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleRow: number, sampleCol: number): void {
+export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleRow: number, sampleCol: number, sampleName?: string): void {
   const freezer = layout.freezerData;
   if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;
   const shelf = freezer.shelves[shelfIndex]!;
@@ -127,15 +191,32 @@ export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: nu
     return;
   }
 
+  const specimen = sampleName?.trim()
+    ? createSample(layout, sampleName.trim())
+    : getUnassignedSample(layout);
   const positionLabel = String.fromCharCode(64 + sampleRow) + sampleCol;
   const newPosition: BoxPosition = {
     id: generateId('pos'),
     label: positionLabel,
     row: sampleRow,
-    column: sampleCol
+    column: sampleCol,
+    ...(specimen ? { sampleId: specimen.id } : {})
   };
 
   slot.box.positions.push(newPosition);
+}
+
+function getUnassignedSample(layout: SavedLayout): Sample | undefined {
+  const assignedSampleIds = new Set(
+    layout.freezerData.shelves.flatMap(shelf =>
+      shelf.racks.flatMap(rack =>
+        rack.boxSlots.flatMap(slot =>
+          slot.box?.positions.flatMap(position => position.sampleId ? [position.sampleId] : []) ?? []
+        )
+      )
+    )
+  );
+  return layout.freezerData.samples?.find(sample => !assignedSampleIds.has(sample.id));
 }
 
 export function removeSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleId: string): void {

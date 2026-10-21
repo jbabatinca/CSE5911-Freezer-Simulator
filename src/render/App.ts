@@ -3,7 +3,8 @@ import { HomeView } from './HomeView.js';
 import { AdminModeHomeView } from './AdminModeHomeView.js';
 import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
-import { TrainingModeView } from './TrainingModeView.js';
+import { TutorialTrainingModeView, startTrainingTutorial, answerTrainingTarget, toggleTrainingRack, toggleTrainingBox } from './TutorialTrainingModeView.js';
+import { QuestionSetCreatorView } from './QuestionSetCreatorView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -11,18 +12,56 @@ import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationS
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
 import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import {
-  addShelf, removeShelf,
-  addRack, removeRack,
-  addBox, removeBox,
-  addSample, removeSample
+import { 
+  addShelf, removeShelf, 
+        addRack, removeRack, renameRack, setRackColor,
+    addBox, removeBox, setBoxColor,
+    addSample, assignSampleToPosition, renameBox, renameSample, removeSample
 } from '../services/FreezerService.js';
 import {
   getExpandedShelfId, setExpandedShelfId,
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
-import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, changeAdminPassword } from '../state/authState.js';
+
+function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'name-entry-dialog';
+        dialog.innerHTML = `
+            <form class="name-entry-form">
+                <h2>${title}</h2>
+                <label for="name-entry-input">${label}</label>
+                <input id="name-entry-input" name="name" type="text" maxlength="120" required autofocus>
+                <div class="name-entry-actions">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-save">${submitLabel}</button>
+                </div>
+            </form>
+        `;
+
+        const form = dialog.querySelector('form')!;
+        const input = dialog.querySelector('input')!;
+        input.value = initialValue;
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const name = input.value.trim();
+            if (name) dialog.close(name);
+        });
+        dialog.querySelector('.btn-cancel')!.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => {
+            const name = dialog.returnValue.trim();
+            dialog.remove();
+            resolve(name || null);
+        }, { once: true });
+
+        document.body.append(dialog);
+        dialog.showModal();
+        input.focus();
+        if (initialValue) input.select();
+    });
+}
+import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 
 
 export function App(): void {
@@ -57,7 +96,7 @@ export function App(): void {
         } else if (mode === 'freezer-layouts') {
             html += ConfigurationModeView(true);
         } else if (mode === 'training') {
-            html += TrainingModeView();
+            html += isAdmin ? QuestionSetCreatorView() : TutorialTrainingModeView();
         }
 
         // Show modals if needed
@@ -102,6 +141,7 @@ export function App(): void {
 
         if (btnUserMode) {
             btnUserMode.addEventListener('click', () => {
+                switchToUserMode();
                 setMode('user-home');
                 render();
             });
@@ -253,7 +293,40 @@ export function App(): void {
 
         if (btnUserTraining) {
             btnUserTraining.addEventListener('click', () => {
+                startTrainingTutorial();
                 setMode('training');
+                render();
+            });
+        }
+
+        document.querySelectorAll('[data-training-target]').forEach(button => {
+            button.addEventListener('click', () => {
+                answerTrainingTarget(button.getAttribute('data-training-target') ?? '');
+                render();
+                const questionPanel = document.getElementById('training-question-panel');
+                questionPanel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                questionPanel?.focus({ preventScroll: true });
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-rack]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingRack(button.getAttribute('data-training-toggle-rack') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-training-toggle-box]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleTrainingBox(button.getAttribute('data-training-toggle-box') ?? '');
+                render();
+            });
+        });
+
+        const btnTutorialRestart = document.getElementById('btn-tutorial-restart');
+        if (btnTutorialRestart) {
+            btnTutorialRestart.addEventListener('click', () => {
+                startTrainingTutorial();
                 render();
             });
         }
@@ -489,6 +562,47 @@ export function App(): void {
             });
         });
 
+        document.querySelectorAll('[id^="btn-rename-rack-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const rackId = btn.id.replace('btn-rename-rack-', '');
+                const rack = currentLayout.freezerData.shelves
+                    .flatMap(shelf => shelf.racks)
+                    .find(item => item.id === rackId);
+                if (!rack) return;
+
+                const rackName = await requestName('Rename rack', 'Rack name', 'Save name', rack.name);
+                if (!rackName) return;
+                renameRack(currentLayout, rackId, rackName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-layout-color-kind]').forEach(button => {
+            button.addEventListener('click', () => {
+                const currentLayout = getCurrentEditingLayout();
+                const kind = button.getAttribute('data-layout-color-kind');
+                const itemId = button.getAttribute('data-layout-color-id');
+                const colorValue = button.getAttribute('data-layout-color-value');
+                if (!currentLayout || !itemId || !colorValue) return;
+
+                if (kind === 'rack') {
+                    setRackColor(currentLayout, itemId, colorValue);
+                } else if (kind === 'box') {
+                    setBoxColor(currentLayout, itemId, colorValue === 'inherit' ? null : colorValue);
+                } else {
+                    return;
+                }
+
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
         // Remove Rack
         document.querySelectorAll('[id^="btn-remove-rack-"]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -509,7 +623,7 @@ export function App(): void {
         // ===== BOX BUTTONS =====
         // Add Box
         document.querySelectorAll('[id^="btn-add-box-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-box-', '').split('-');
                 const row = parseInt(coords[0]!);
                 const column = parseInt(coords[1]!);
@@ -517,12 +631,14 @@ export function App(): void {
                 const expandedShelfId = getExpandedShelfId();
                 const expandedRackId = getExpandedRackId();
                 if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const boxName = await requestName('Add box', 'Box name', 'Create box', `Box ${row}-${column}`);
+                if (!boxName) return;
                 
                 const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
                 const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
                 
                 if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addBox(currentLayout, shelfIndex, rackIndex, row, column);
+                    addBox(currentLayout, shelfIndex, rackIndex, row, column, boxName);
                 }
                 render();
             });
@@ -534,6 +650,26 @@ export function App(): void {
                 const boxId = btn.id.replace('btn-toggle-box-', '');
                 const isExpanded = getExpandedBoxId() === boxId;
                 setExpandedBoxId(isExpanded ? null : boxId);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-rename-box-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const boxId = btn.id.replace('btn-rename-box-', '');
+                const box = currentLayout.freezerData.shelves
+                    .flatMap(shelf => shelf.racks)
+                    .flatMap(rack => rack.boxSlots)
+                    .find(slot => slot.box?.id === boxId)?.box;
+                if (!box) return;
+
+                const boxName = await requestName('Rename box', 'Box name', 'Save name', box.name);
+                if (!boxName) return;
+                renameBox(currentLayout, boxId, boxName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
                 render();
             });
         });
@@ -564,7 +700,7 @@ export function App(): void {
         // ===== SAMPLE BUTTONS =====
         // Add Sample
         document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-sample-', '').split('-');
                 const boxRow = parseInt(coords[0]!);
                 const boxCol = parseInt(coords[1]!);
@@ -575,14 +711,48 @@ export function App(): void {
                 const expandedRackId = getExpandedRackId();
 
                 if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
+                if (!specimenName) return;
 
                 const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
                 const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
 
                 if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol);
+                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol, specimenName);
+                    currentLayout.updatedAt = new Date().toISOString();
+                    saveLayout(currentLayout);
                     render();
                 }
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-assign-specimen-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
+                if (!currentLayout || !specimenName) return;
+                const positionId = btn.id.replace('btn-assign-specimen-', '');
+                assignSampleToPosition(currentLayout, positionId, specimenName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[id^="btn-rename-sample-"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+                const sampleId = btn.id.replace('btn-rename-sample-', '');
+                const sample = currentLayout.freezerData.samples?.find(item => item.id === sampleId);
+
+                const sampleName = await requestName('Rename specimen', 'Specimen name', 'Save name', sample?.name ?? sampleId);
+                if (!sampleName) return;
+                renameSample(currentLayout, sampleId, sampleName);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
+                render();
             });
         });
 
