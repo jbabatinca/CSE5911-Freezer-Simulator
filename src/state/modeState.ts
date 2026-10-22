@@ -1,4 +1,4 @@
-export type Mode = 'home' | 'admin-home' | 'user-home' | 'configuration' | 'training' | 'freezer-layouts';
+export type Mode = 'home' | 'admin-home' | 'user-home' | 'configuration' | 'training' | 'freezer-layouts' | 'question-set-user';
 
 let currentMode: Mode = 'home';
 let previousMode: Mode = 'home';

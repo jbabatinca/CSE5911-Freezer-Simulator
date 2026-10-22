@@ -4,7 +4,23 @@ import { AdminModeHomeView } from './AdminModeHomeView.js';
 import { UserModeHomeView } from './UserModeHomeView.js';
 import { ConfigurationModeView } from './ConfigurationModeView.js';
 import { TutorialTrainingModeView, startTrainingTutorial, answerTrainingTarget, toggleTrainingRack, toggleTrainingBox } from './TutorialTrainingModeView.js';
-import { QuestionSetCreatorView } from './QuestionSetCreatorView.js';
+import {
+    QuestionSetCreatorView,
+    startQuestionSetCreation,
+    editQuestionSet,
+    cancelQuestionSetEditing,
+    setQuestionSetName,
+    setQuestionSetDescription,
+    setQuestionSetLayout,
+    addQuestionToSet,
+    toggleQuestionEditor,
+    updateQuestionInSet,
+    removeQuestionFromSet,
+    moveQuestionInSet,
+    saveQuestionSetDraft,
+    removeSavedQuestionSet
+} from './QuestionSetCreatorView.js';
+import { renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -12,6 +28,7 @@ import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationS
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
 import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
+import type { QuestionTargetType } from '../models/QuestionSet.js';
 import { 
   addShelf, removeShelf, 
         addRack, removeRack, renameRack, setRackColor,
@@ -67,6 +84,7 @@ import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switch
 export function App(): void {
     const app = document.getElementById('app');
     if (!app) return;
+    let selectedUserQuestionSetId: string | null = null;
 
     initializeAuth();
     render();
@@ -97,6 +115,8 @@ export function App(): void {
             html += ConfigurationModeView(true);
         } else if (mode === 'training') {
             html += isAdmin ? QuestionSetCreatorView() : TutorialTrainingModeView();
+        } else if (mode === 'question-set-user') {
+            html += renderUserQuestionSetView(selectedUserQuestionSetId ?? '');
         }
 
         // Show modals if needed
@@ -295,6 +315,152 @@ export function App(): void {
             btnUserTraining.addEventListener('click', () => {
                 startTrainingTutorial();
                 setMode('training');
+                render();
+            });
+        }
+
+        const userQuestionSetSelect = document.getElementById('user-question-set-select') as HTMLSelectElement | null;
+        const btnOpenQuestionSet = document.getElementById('btn-open-question-set') as HTMLButtonElement | null;
+        if (userQuestionSetSelect && btnOpenQuestionSet) {
+            userQuestionSetSelect.addEventListener('change', () => {
+                btnOpenQuestionSet.disabled = !userQuestionSetSelect.value;
+            });
+            btnOpenQuestionSet.addEventListener('click', () => {
+                if (!userQuestionSetSelect.value) return;
+                selectedUserQuestionSetId = userQuestionSetSelect.value;
+                startQuestionSetRun(selectedUserQuestionSetId);
+                setMode('question-set-user');
+                render();
+            });
+        }
+
+        document.querySelectorAll('[data-question-set-answer]').forEach(button => {
+            button.addEventListener('click', () => {
+                submitQuestionSetAnswer();
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-set-toggle-rack]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleUserQuestionSetRack(button.getAttribute('data-question-set-toggle-rack') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-set-toggle-box]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleUserQuestionSetBox(button.getAttribute('data-question-set-toggle-box') ?? '');
+                render();
+            });
+        });
+
+        const btnQuestionSetRestart = document.getElementById('btn-question-set-restart');
+        if (btnQuestionSetRestart && selectedUserQuestionSetId) {
+            btnQuestionSetRestart.addEventListener('click', () => {
+                startQuestionSetRun(selectedUserQuestionSetId!);
+                render();
+            });
+        }
+
+        const btnQuestionSetNew = document.getElementById('btn-question-set-new');
+        if (btnQuestionSetNew) {
+            btnQuestionSetNew.addEventListener('click', () => {
+                startQuestionSetCreation();
+                render();
+            });
+        }
+
+        document.querySelectorAll('[data-question-set-edit]').forEach(button => {
+            button.addEventListener('click', () => {
+                editQuestionSet(button.getAttribute('data-question-set-edit') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-set-delete]').forEach(button => {
+            button.addEventListener('click', () => {
+                const questionSetId = button.getAttribute('data-question-set-delete') ?? '';
+                if (!questionSetId || !confirm('Delete this question set?')) return;
+                removeSavedQuestionSet(questionSetId);
+                render();
+            });
+        });
+
+        const btnQuestionSetCancel = document.getElementById('btn-question-set-cancel');
+        if (btnQuestionSetCancel) {
+            btnQuestionSetCancel.addEventListener('click', () => {
+                cancelQuestionSetEditing();
+                render();
+            });
+        }
+
+        const questionSetName = document.getElementById('question-set-name') as HTMLInputElement | null;
+        questionSetName?.addEventListener('input', () => setQuestionSetName(questionSetName.value));
+
+        const questionSetDescription = document.getElementById('question-set-description') as HTMLTextAreaElement | null;
+        questionSetDescription?.addEventListener('input', () => setQuestionSetDescription(questionSetDescription.value));
+
+        const questionSetLayout = document.getElementById('question-set-layout') as HTMLSelectElement | null;
+        questionSetLayout?.addEventListener('change', () => {
+            setQuestionSetLayout(questionSetLayout.value);
+            render();
+        });
+
+        const btnQuestionSetAdd = document.getElementById('btn-question-set-add');
+        if (btnQuestionSetAdd) {
+            btnQuestionSetAdd.addEventListener('click', () => {
+                addQuestionToSet();
+                render();
+            });
+        }
+
+        document.querySelectorAll('[data-question-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                toggleQuestionEditor(button.getAttribute('data-question-toggle') ?? '');
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-prompt]').forEach(input => {
+            input.addEventListener('input', () => {
+                updateQuestionInSet(input.getAttribute('data-question-prompt') ?? '', { prompt: (input as HTMLInputElement).value });
+            });
+        });
+
+        document.querySelectorAll('[data-question-type]').forEach(select => {
+            select.addEventListener('change', () => {
+                updateQuestionInSet(select.getAttribute('data-question-type') ?? '', {
+                    targetType: (select as HTMLSelectElement).value as QuestionTargetType
+                });
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-target]').forEach(select => {
+            select.addEventListener('change', () => {
+                updateQuestionInSet(select.getAttribute('data-question-target') ?? '', { targetId: (select as HTMLSelectElement).value });
+            });
+        });
+
+        document.querySelectorAll('[data-question-move]').forEach(button => {
+            button.addEventListener('click', () => {
+                moveQuestionInSet(button.getAttribute('data-question-id') ?? '', button.getAttribute('data-question-move') === 'up' ? -1 : 1);
+                render();
+            });
+        });
+
+        document.querySelectorAll('[data-question-remove]').forEach(button => {
+            button.addEventListener('click', () => {
+                removeQuestionFromSet(button.getAttribute('data-question-remove') ?? '');
+                render();
+            });
+        });
+
+        const btnQuestionSetSave = document.getElementById('btn-question-set-save');
+        if (btnQuestionSetSave) {
+            btnQuestionSetSave.addEventListener('click', () => {
+                saveQuestionSetDraft();
                 render();
             });
         }
