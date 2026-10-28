@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { SavedLayout } from '../../src/models/SavedLayout.js';
+import type { FreezerShelf } from '../../src/models/freezerLayout.js';
 import {
   addShelf,
   removeShelf,
@@ -231,7 +232,7 @@ describe('FreezerService - Sample Operations', () => {
   });
 
   it('should add a sample position to a box', () => {
-    const shelf = {
+    const shelf: FreezerShelf = {
       id: 'shelf-1',
       name: 'Shelf 1',
       racks: [

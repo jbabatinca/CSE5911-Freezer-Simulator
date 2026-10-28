@@ -21,4 +21,4 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
 });
 
-global.alert = vi.fn();
+globalThis.alert = vi.fn();
