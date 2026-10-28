@@ -167,7 +167,7 @@ function renderBox(layout: SavedLayout, shelfId: string, rack: SavedLayout['free
     const box = slot.box!;
     const rackId = rack.id;
     const rackColor = isHexColor(rack.color) ? rack.color : '#FFFFFF';
-    const boxColor = isHexColor(box.color) ? box.color : rackColor;
+    const boxColor = isHexColor(box.color) ? box.color : '#FFFFFF';
     const boxForeground = getReadableTextColor(boxColor);
     if (question.targetType === 'box') {
         return `<button type="button" class="tutorial-box-target" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-question-set-answer="${escapeHtml(box.id)}">${escapeHtml(box.name)}</button>`;
