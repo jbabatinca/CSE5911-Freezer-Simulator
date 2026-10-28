@@ -16,11 +16,30 @@
     "name": {
       "$ref": "#/$defs/nonEmptyString"
     },
-    "shelves": {
+        "shelves": {
       "type": "array",
       "maxItems": 4,
       "items": {
         "$ref": "#/$defs/shelf"
+      }
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "name": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
       }
     }
   },
