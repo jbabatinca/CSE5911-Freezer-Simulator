@@ -57,7 +57,7 @@ describe('Navigation Component', () => {
 
     it('should not show Settings or Logout for non-admin modes', () => {
       (authState.isAdminAuthenticated as any).mockReturnValue(false);
-      const html = Navigation('freezer-layouts');
+      const html = Navigation('freezer-layouts', 'training');
 
       expect(html).not.toContain('Settings');
       expect(html).not.toContain('Logout');
