@@ -46,8 +46,7 @@ describe('Navigation Component', () => {
 
   describe('Other Modes (Navigation/Editor)', () => {
     it('should render Back button for non-home modes', () => {
-      const modes: Mode[] = ['training', 'configuration', 'freezer-layouts'];
-
+      const modes: Mode[] = ['freezer-layouts', 'training', 'configuration', 'question-set-user'];
 
       modes.forEach(mode => {
         const html = Navigation(mode);
@@ -58,7 +57,7 @@ describe('Navigation Component', () => {
 
     it('should not show Settings or Logout for non-admin modes', () => {
       (authState.isAdminAuthenticated as any).mockReturnValue(false);
-      const html = Navigation('training');
+      const html = Navigation('freezer-layouts', 'training');
 
       expect(html).not.toContain('Settings');
       expect(html).not.toContain('Logout');
