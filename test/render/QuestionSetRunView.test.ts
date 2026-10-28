@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer,
+  advanceQuestionSetRun, renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer,
   toggleUserQuestionSetBox, toggleUserQuestionSetRack,
 } from '../../src/render/QuestionSetRunView.js';
-import { deleteQuestionSet, saveQuestionSet } from '../../src/services/QuestionSetService.js';
+import { deleteQuestionSet, getQuestionSet, saveQuestionSet } from '../../src/services/QuestionSetService.js';
 import { deleteLayout, saveLayout } from '../../src/services/StorageService.js';
 import { element, makeLayout, makeQuestionSet, parseView } from '../helpers/questionSets.js';
 
 const view = () => parseView(renderUserQuestionSetView('set-1'));
 const answers = () => Array.from(view().querySelectorAll('[data-question-set-answer]'), button => button.getAttribute('data-question-set-answer'));
+
+// Rendering tests move through the fixture by answering the current question and pressing Next.
+function answerAndAdvance() {
+  const step = view().querySelector('[aria-current="step"] strong')?.textContent;
+  const question = step ? getQuestionSet('set-1')?.questions[Number(step.slice(1)) - 1] : null;
+  submitQuestionSetAnswer(question?.targetId ?? 'missing');
+  advanceQuestionSetRun();
+}
 
 describe('Question set run', () => {
   beforeEach(() => {
@@ -19,38 +27,38 @@ describe('Question set run', () => {
   });
 
   it('starts at question one and resets progress and expansion on restart', () => {
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     toggleUserQuestionSetBox('layout-1-box-1');
     startQuestionSetRun('set-1');
     expect(view().textContent).toContain('Question 1 / 3');
     expect(view().querySelectorAll('.question-set-progress .is-complete')).toHaveLength(0);
     expect(element(view(), '[aria-current="step"]').textContent).toContain('Q1');
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(view().querySelector('.tutorial-boxes')).toBeNull();
     toggleUserQuestionSetRack('layout-1-rack-1');
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(view().querySelector('.tutorial-sample-grid')).toBeNull();
   });
 
   it('advances through each question, resets expansion, and completes after the last answer', () => {
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(view().textContent).toContain('Question 2 / 3');
     expect(view().querySelectorAll('.question-set-progress .is-complete')).toHaveLength(1);
     expect(element(view(), '.training-question h2').textContent).toBe('Find Box 1');
     toggleUserQuestionSetRack('layout-1-rack-1');
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(view().textContent).toContain('Question 3 / 3');
     expect(view().querySelector('.tutorial-boxes')).toBeNull();
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(view().textContent).toContain('Set complete · 3 questions');
     expect(view().querySelectorAll('.question-set-progress .is-complete')).toHaveLength(3);
     expect(view().querySelector('[aria-current="step"]')).toBeNull();
     expect(element(view(), '#btn-question-set-restart').textContent).toBe('Run set again');
     expect(answers()).toEqual([]);
     const completed = renderUserQuestionSetView('set-1');
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(renderUserQuestionSetView('set-1')).toBe(completed);
     startQuestionSetRun('set-1');
     expect(view().textContent).toContain('Question 1 / 3');
@@ -65,7 +73,7 @@ describe('Question set run', () => {
   });
 
   it('requires expanding a rack to answer a box question and collapses it again', () => {
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(answers()).toEqual([]);
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(answers()).toEqual(['layout-1-box-1']);
@@ -77,8 +85,8 @@ describe('Question set run', () => {
   });
 
   function sampleQuestion() {
-    submitQuestionSetAnswer();
-    submitQuestionSetAnswer();
+    answerAndAdvance();
+    answerAndAdvance();
   }
 
   it('shows the sample grid only in the expanded box and answers by occupied position ID', () => {
@@ -116,7 +124,7 @@ describe('Question set run', () => {
   it('renders an empty set without answer controls', () => {
     saveQuestionSet(makeQuestionSet({ questions: [] }));
     expect(view().textContent).toContain('This set does not contain any questions.');
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(answers()).toEqual([]);
     expect(view().querySelector('#btn-question-set-restart')).toBeNull();
   });
@@ -124,7 +132,7 @@ describe('Question set run', () => {
   it('renders an error if the set is deleted during a run', () => {
     deleteQuestionSet('set-1');
     expect(view().textContent).toContain('This question set is no longer available.');
-    expect(() => submitQuestionSetAnswer()).not.toThrow();
+    expect(() => answerAndAdvance()).not.toThrow();
     expect(answers()).toEqual([]);
   });
 
@@ -139,7 +147,7 @@ describe('Question set run', () => {
     layout.freezerData.shelves[0]!.racks[0]!.color = color;
     layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.color = color;
     saveLayout(layout);
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(element(view(), '.tutorial-rack').style.getPropertyValue('--tutorial-rack-color')).toBe('#FFFFFF');
     const box = element(view(), '.tutorial-box-target');
@@ -153,7 +161,7 @@ describe('Question set run', () => {
     layout.freezerData.shelves[0]!.racks[0]!.color = '#000000';
     layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.color = 'red';
     saveLayout(layout);
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-color')).toBe('#FFFFFF');
   });
@@ -164,10 +172,10 @@ describe('Question set run', () => {
     const layout = makeLayout();
     layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.color = color;
     saveLayout(layout);
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-foreground')).toBe(foreground);
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     toggleUserQuestionSetBox('layout-1-box-1');
     expect(element(view(), '.tutorial-sample-grid').style.getPropertyValue('--tutorial-box-foreground')).toBe(foreground);
@@ -190,22 +198,35 @@ describe('Question set run', () => {
     expect(element(view(), '.tutorial-map-content > h2').textContent).toBe(text);
     expect(element(view(), '.tutorial-shelf').getAttribute('aria-label')).toBe(text);
     expect(element(view(), '.tutorial-rack-target').textContent).toContain(text);
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(element(view(), '.tutorial-box-target').textContent).toBe(text);
     expect(view().querySelector('img, script, [onerror]')).toBeNull();
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     toggleUserQuestionSetBox('layout-1-box-1');
     expect(element(view(), '.tutorial-sample-target').title).toBe(text);
     expect(view().querySelector('img, script, [onerror]')).toBeNull();
-    submitQuestionSetAnswer();
+    answerAndAdvance();
     expect(element(view(), 'h1').textContent).toBe(text);
     expect(view().querySelector('img, script, [onerror]')).toBeNull();
   });
 
-  // The current submit API accepts no target ID and advances unconditionally.
-  // Activate these when answer checking is implemented rather than locking in that behavior.
-  it.todo('keeps the current question active when the selected target is incorrect');
-  it.todo('advances only when the selected rack, box, or sample position matches the question target');
+  it('keeps the current question active when the selected target is incorrect', () => {
+    submitQuestionSetAnswer('layout-1-rack-2');
+    advanceQuestionSetRun();
+    expect(element(view(), '.training-question h2').textContent).toBe('Find Rack 1');
+    expect(element(view(), '[role="status"]').textContent).toContain('Incorrect. Try again. 1 of 3 misses.');
+    expect(view().textContent).toContain('Score: 0 / 3');
+  });
+
+  it('requires a matching target and explicit Next to advance through all three types', () => {
+    for (const [index, question] of makeQuestionSet().questions.entries()) {
+      submitQuestionSetAnswer(question.targetId);
+      expect(view().textContent).toContain(`Question ${index + 1} / 3`);
+      expect(element(view(), '[role="status"]').textContent).toContain('Correct!');
+      advanceQuestionSetRun();
+    }
+    expect(view().textContent).toContain('Score: 3 / 3 (100%)');
+  });
 });

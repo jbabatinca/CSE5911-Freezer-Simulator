@@ -16,3 +16,19 @@ export interface QuestionSet {
   createdAt: string;
   updatedAt: string;
 }
+
+/** A target's current location in its source layout. Sample targets use position IDs. */
+export interface ResolvedQuestionTarget {
+  id: string;
+  targetType: QuestionTargetType;
+  label: string;
+  shelfId: string;
+  rackId: string;
+  boxId: string | null;
+}
+
+export interface QuestionSetResult {
+  questionId: string;
+  outcome: 'correct';
+  misses: number;
+}
