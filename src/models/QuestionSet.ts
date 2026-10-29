@@ -31,4 +31,6 @@ export interface QuestionSetResult {
   questionId: string;
   outcome: 'correct';
   misses: number;
+  /** Milliseconds from the question being shown until it was answered correctly. */
+  timeMs: number;
 }

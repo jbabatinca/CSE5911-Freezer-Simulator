@@ -1,4 +1,4 @@
-# Freezer Layout Schema
+l# Freezer Layout Schema
 
 The freezer simulator uses the following hierarchy:
 

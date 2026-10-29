@@ -14,7 +14,15 @@ let misses = 0;
 let outcome: QuestionSetResult['outcome'] | null = null;
 let selectedTargetId: string | null = null;
 let results: QuestionSetResult[] = [];
-let runRestartedAfterMisses = false;
+let restartReason: 'misses' | 'time' | null = null;
+
+const SET_TIME_LIMIT_MS = 120_000;
+const LOW_TIME_MS = 20_000;
+let setStartedAt = 0;
+let questionStartedAt = 0;
+let lastAnswerMs: number | null = null;
+// Set once the final question is answered correctly so the countdown stops.
+let frozenRemainingMs: number | null = null;
 
 function resetQuestion(): void {
     misses = 0;
@@ -22,6 +30,42 @@ function resetQuestion(): void {
     selectedTargetId = null;
     expandedRackId = null;
     expandedBoxId = null;
+    questionStartedAt = Date.now();
+    lastAnswerMs = null;
+}
+
+export function getQuestionSetRemainingMs(): number {
+    if (frozenRemainingMs !== null) return frozenRemainingMs;
+    return Math.max(0, SET_TIME_LIMIT_MS - (Date.now() - setStartedAt));
+}
+
+export function formatQuestionSetTime(ms: number): string {
+    const totalSeconds = Math.ceil(ms / 1000);
+    return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+}
+
+function formatDuration(ms: number): string {
+    return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** Restarts the run from question 1 when the countdown has expired. Returns true if it restarted. */
+export function enforceQuestionSetTimeLimit(): boolean {
+    if (!activeQuestionSetId || runComplete || frozenRemainingMs !== null || getQuestionSetRemainingMs() > 0) return false;
+    startQuestionSetRun(activeQuestionSetId);
+    restartReason = 'time';
+    return true;
+}
+
+/** Updates the visible countdown in place. Returns true when the set restarted and needs a full re-render. */
+export function refreshQuestionSetTimer(): boolean {
+    if (enforceQuestionSetTimeLimit()) return true;
+    const timer = document.getElementById('question-set-timer');
+    if (!timer) return false;
+    const remaining = getQuestionSetRemainingMs();
+    const label = timer.querySelector('strong');
+    if (label) label.textContent = formatQuestionSetTime(remaining);
+    timer.classList.toggle('is-low', remaining <= LOW_TIME_MS);
+    return false;
 }
 
 function getScore(): number {
@@ -49,11 +93,14 @@ export function startQuestionSetRun(questionSetId: string): void {
     activeQuestionIndex = 0;
     runComplete = false;
     results = [];
-    runRestartedAfterMisses = false;
+    restartReason = null;
+    setStartedAt = Date.now();
+    frozenRemainingMs = null;
     resetQuestion();
 }
 
 export function submitQuestionSetAnswer(targetId: string): void {
+    if (enforceQuestionSetTimeLimit()) return;
     if (runComplete || outcome) return;
     const question = getCurrentQuestion();
     const questionSet = activeQuestionSetId ? getQuestionSet(activeQuestionSetId) : null;
@@ -63,8 +110,9 @@ export function submitQuestionSetAnswer(targetId: string): void {
     const selection = resolveQuestionTarget(layout, { targetType: question.targetType, targetId });
     if (!target || !selection) return;
 
-    runRestartedAfterMisses = false;
+    restartReason = null;
     selectedTargetId = targetId;
+    lastAnswerMs = Date.now() - questionStartedAt;
     if (targetId === target.id) outcome = 'correct';
     else {
         misses++;
@@ -72,13 +120,14 @@ export function submitQuestionSetAnswer(targetId: string): void {
             const questionSetId = activeQuestionSetId;
             if (questionSetId) {
                 startQuestionSetRun(questionSetId);
-                runRestartedAfterMisses = true;
+                restartReason = 'misses';
             }
             return;
         }
     }
     if (outcome) {
-        results.push({ questionId: question.id, outcome, misses });
+        results.push({ questionId: question.id, outcome, misses, timeMs: lastAnswerMs ?? 0 });
+        if (questionSet && activeQuestionIndex === questionSet.questions.length - 1) frozenRemainingMs = getQuestionSetRemainingMs();
         // Reveal nested answers even if the user was searching a different rack or box.
         expandedRackId = target.rackId;
         expandedBoxId = target.boxId;
@@ -86,6 +135,7 @@ export function submitQuestionSetAnswer(targetId: string): void {
 }
 
 export function advanceQuestionSetRun(): void {
+    if (enforceQuestionSetTimeLimit()) return;
     if (runComplete || !outcome) return;
     const questionSet = activeQuestionSetId ? getQuestionSet(activeQuestionSetId) : null;
     if (!questionSet) return;
@@ -128,6 +178,7 @@ export function renderUserQuestionSetView(questionSetId: string): string {
     if (activeQuestionSetId !== questionSetId) {
         return renderRunError('Choose this question set in Training Mode to start a run.', questionSet.name);
     }
+    enforceQuestionSetTimeLimit();
     const question = getCurrentQuestion();
     if (runComplete) {
         const totalMisses = results.reduce((total, result) => total + result.misses, 0);
@@ -138,7 +189,7 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                         <p class="training-eyebrow">CUSTOM TRAINING SET</p>
                         <h1>${escapeHtml(questionSet.name)}</h1>
                     </div>
-                    <p class="tutorial-strikes">Set complete · ${questionSet.questions.length} questions</p>
+                    <p class="tutorial-strikes">Set complete · ${questionSet.questions.length} questions · ${formatQuestionSetTime(getQuestionSetRemainingMs())} left</p>
                 </header>
                 <nav class="tutorial-levels question-set-progress" aria-label="Question progress">
                     ${questionSet.questions.map((item, index) => `<div class="tutorial-level is-complete" aria-current="false"><strong>Q${index + 1}</strong><span>${getQuestionTypeLabel(item.targetType)} · Correct</span></div>`).join('')}
@@ -159,6 +210,7 @@ export function renderUserQuestionSetView(questionSetId: string): string {
         return renderRunError('A question target is no longer available in the source layout. Choose another set or ask an admin to update this set.', questionSet.name);
     }
 
+    const remainingMs = getQuestionSetRemainingMs();
     return `
         <section class="training-view tutorial-training user-question-set-view question-set-run-view">
             <header class="training-heading training-active-heading">
@@ -168,7 +220,10 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                     <p>${escapeHtml(questionSet.description)}</p>
                     ${renderChangeSetButton()}
                 </div>
-                <p class="tutorial-strikes">Question ${activeQuestionIndex + 1} / ${questionSet.questions.length}</p>
+                <div class="question-set-status">
+                    <p class="question-set-timer${remainingMs <= LOW_TIME_MS ? ' is-low' : ''}" id="question-set-timer" role="timer" aria-live="off"><span>Time left</span> <strong>${formatQuestionSetTime(remainingMs)}</strong></p>
+                    <p class="tutorial-strikes">Question ${activeQuestionIndex + 1} / ${questionSet.questions.length}</p>
+                </div>
             </header>
             <nav class="tutorial-levels question-set-progress" aria-label="Question progress">
                 ${questionSet.questions.map((item, index) => {
@@ -184,10 +239,12 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                 <p class="question-set-score">Score: ${getScore()} / ${questionSet.questions.length} · Misses: ${misses} / 3</p>
                 <p class="question-set-rules">Earn one point by finding the target. You cannot continue until you answer correctly. Three incorrect attempts restart the entire question set.</p>
                 <p id="question-set-feedback" tabindex="-1" class="training-feedback ${outcome === 'correct' ? 'is-correct' : selectedTargetId ? 'is-incorrect' : ''}" role="status">${outcome === 'correct'
-                    ? 'Correct! One point earned. Continue when you are ready.'
-                    : runRestartedAfterMisses
-                        ? 'Three incorrect attempts. The entire question set has restarted from question 1.'
-                        : selectedTargetId ? `Incorrect. Try again. ${misses} of 3 misses.` : 'Select the matching target in the freezer layout.'}</p>
+                    ? `Correct! One point earned. ${renderElapsed('Time on this question')} Continue when you are ready.`
+                    : restartReason === 'misses'
+                        ? 'Three incorrect attempts. Restart from the beginning.'
+                        : restartReason === 'time'
+                            ? 'Time expired. Restart from the beginning.'
+                            : selectedTargetId ? `Incorrect. Try again. ${misses} of 3 misses. ${renderElapsed('Time so far on this question')}` : 'Select the matching target in the freezer layout.'}</p>
                 ${outcome ? `<button type="button" id="btn-question-set-next" class="btn-save">${activeQuestionIndex === questionSet.questions.length - 1 ? 'See results' : 'Next question'}</button>` : ''}
             </section>
             <div class="tutorial-map-content">
@@ -196,6 +253,10 @@ export function renderUserQuestionSetView(questionSetId: string): string {
             </div>
         </section>
     `;
+}
+
+function renderElapsed(label: string): string {
+    return lastAnswerMs === null ? '' : `<span class="question-set-time">${label}: ${formatDuration(lastAnswerMs)}.</span>`;
 }
 
 function renderChangeSetButton(): string {
