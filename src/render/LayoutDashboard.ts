@@ -16,25 +16,14 @@ export function LayoutDashboard(readOnly: boolean = false): string {
     }
   } else {
     // Edit mode: show layouts and create buttons
-    for (let i = 0; i < 5; i++) {
-      if (i < layouts.length) {
-        // Show saved layout
-        const layout = layouts[i]!;
-        buttonsHtml += `<button id="layout-${layout.id}" class="layout-button layout-slot">
-          ${layout.name}
-        </button>`;
-      } else if (i === layouts.length) {
-        // First empty slot after layouts = "New Layout"
-        buttonsHtml += `<button id="btn-new-layout-${i}" class="layout-button new-layout-btn">
-          New Layout
-        </button>`;
-      } else {
-        // Rest are "+"
-        buttonsHtml += `<button id="btn-add-layout-${i}" class="layout-button plus-btn">
-          +
-        </button>`;
-      }
+    for (const layout of layouts) {
+      buttonsHtml += `<button id="layout-${layout.id}" class="layout-button layout-slot">
+        ${layout.name}
+      </button>`;
     }
+    buttonsHtml += `<button id="btn-add-freezer" class="layout-button new-layout-btn">
+      + Add Freezer
+    </button>`;
   }
 
   return `
