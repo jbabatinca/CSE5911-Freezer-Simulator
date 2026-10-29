@@ -20,7 +20,7 @@ import {
     saveQuestionSetDraft,
     removeSavedQuestionSet
 } from './QuestionSetCreatorView.js';
-import { renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
+import { advanceQuestionSetRun, renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -331,14 +331,29 @@ export function App(): void {
                 startQuestionSetRun(selectedUserQuestionSetId);
                 setMode('question-set-user');
                 render();
+                document.getElementById('question-set-question-panel')?.focus();
             });
         }
 
         document.querySelectorAll('[data-question-set-answer]').forEach(button => {
             button.addEventListener('click', () => {
-                submitQuestionSetAnswer();
+                submitQuestionSetAnswer(button.getAttribute('data-question-set-answer') ?? '');
                 render();
+                document.getElementById('question-set-feedback')?.focus();
             });
+        });
+
+        document.getElementById('btn-question-set-next')?.addEventListener('click', () => {
+            advanceQuestionSetRun();
+            render();
+            (document.getElementById('question-set-question-panel') ?? document.getElementById('question-set-completion'))?.focus();
+        });
+
+        document.getElementById('btn-question-set-change')?.addEventListener('click', () => {
+            selectedUserQuestionSetId = null;
+            setMode('user-home');
+            render();
+            document.getElementById('user-question-set-select')?.focus();
         });
 
         document.querySelectorAll('[data-question-set-toggle-rack]').forEach(button => {
@@ -360,6 +375,7 @@ export function App(): void {
             btnQuestionSetRestart.addEventListener('click', () => {
                 startQuestionSetRun(selectedUserQuestionSetId!);
                 render();
+                document.getElementById('question-set-question-panel')?.focus();
             });
         }
 

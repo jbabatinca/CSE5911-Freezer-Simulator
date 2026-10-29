@@ -95,16 +95,21 @@ describe('Question set application workflow', () => {
     chooseSet(sets[0]!.id);
     expect(element(document, '.training-question h2').textContent).toBe('Choose rack two');
     click('[data-question-set-answer="layout-1-rack-2"]');
+    expect(element(document, '#question-set-feedback').textContent).toContain('Correct!');
+    click('#btn-question-set-next');
     expect(element(document, '.training-question h2').textContent).toBe('Choose box one');
     expect(document.querySelector('[data-question-set-answer]')).toBeNull();
     click('[data-question-set-toggle-rack="layout-1-rack-1"]');
     click('[data-question-set-answer="layout-1-box-1"]');
+    click('#btn-question-set-next');
     expect(element(document, '.training-question h2').textContent).toBe('Choose Serum at A1');
     click('[data-question-set-toggle-rack="layout-1-rack-1"]');
     click('[data-question-set-toggle-box="layout-1-box-1"]');
     click('[data-question-set-answer="layout-1-position-1"]');
+    click('#btn-question-set-next');
     expect(element(document, '#app').textContent).toContain('Set complete · 3 questions');
     expect(document.querySelectorAll('.question-set-progress .is-complete')).toHaveLength(3);
+    expect(element(document, '.question-set-score').textContent).toBe('Score: 3 / 3 (100%)');
     click('#btn-question-set-restart');
     expect(element(document, '#app').textContent).toContain('Question 1 / 3');
     expect(document.querySelectorAll('.question-set-progress .is-complete')).toHaveLength(0);
@@ -129,6 +134,95 @@ describe('Question set application workflow', () => {
     expect(element(document, '.user-question-set-view h1').textContent).toBe('Advanced');
     click('#btn-back');
     expect(getCurrentMode()).toBe('user-home');
+  });
+
+  it('runs a set with wrong answers, then restarts and completes a different set', () => {
+    saveQuestionSet(makeQuestionSet());
+    saveQuestionSet(makeQuestionSet({ id: 'set-2', name: 'Specimen practice', questions: [makeQuestionSet().questions[2]!] }));
+    App();
+    click('#btn-user-mode');
+    chooseSet('set-1');
+    for (let miss = 1; miss <= 2; miss++) {
+      click('[data-question-set-answer="layout-1-rack-2"]');
+      expect(element(document, '#question-set-feedback').textContent).toContain(`${miss} of 3 misses`);
+      expect(document.querySelector('#btn-question-set-next')).toBeNull();
+      expect(document.activeElement?.id).toBe('question-set-feedback');
+    }
+    click('[data-question-set-answer="layout-1-rack-1"]');
+    expect(button('[data-question-set-answer="layout-1-rack-1"]').disabled).toBe(true);
+    click('[data-question-set-answer="layout-1-rack-1"]');
+    expect(element(document, '.question-set-score').textContent).toContain('Score: 1 / 3');
+    click('#btn-question-set-next');
+    expect(document.activeElement?.id).toBe('question-set-question-panel');
+    click('[data-question-set-toggle-rack="layout-1-rack-2"]');
+    click('[data-question-set-answer="layout-1-box-2"]');
+    expect(element(document, '#question-set-feedback').textContent).toContain('1 of 3 misses');
+    click('[data-question-set-toggle-rack="layout-1-rack-2"]');
+    click('[data-question-set-toggle-rack="layout-1-rack-1"]');
+    click('[data-question-set-answer="layout-1-box-1"]');
+    click('#btn-question-set-next');
+    click('[data-question-set-toggle-rack="layout-1-rack-1"]');
+    click('[data-question-set-toggle-box="layout-1-box-1"]');
+    click('[data-question-set-answer="layout-1-position-1"]');
+    expect(button('#btn-question-set-next').textContent).toBe('See results');
+    click('#btn-question-set-next');
+    expect(element(document, '.question-set-score').textContent).toBe('Score: 3 / 3 (100%)');
+    expect(element(document, '#question-set-completion').textContent).toContain('3 misses');
+    expect(document.activeElement?.id).toBe('question-set-completion');
+
+    click('#btn-question-set-restart');
+    expect(element(document, '.question-set-score').textContent).toContain('Score: 0 / 3 · Misses: 0 / 3');
+    click('#btn-question-set-change');
+    expect(getCurrentMode()).toBe('user-home');
+    expect(document.activeElement?.id).toBe('user-question-set-select');
+    expect(button('#btn-open-question-set').disabled).toBe(true);
+    chooseSet('set-2');
+    expect(element(document, '.user-question-set-view h1').textContent).toBe('Specimen practice');
+    expect(element(document, '.question-set-score').textContent).toContain('Score: 0 / 1 · Misses: 0 / 3');
+    click('[data-question-set-toggle-rack="layout-1-rack-1"]');
+    click('[data-question-set-toggle-box="layout-1-box-1"]');
+    click('[data-question-set-answer="layout-1-position-1"]');
+    click('#btn-question-set-next');
+    expect(element(document, '.question-set-score').textContent).toBe('Score: 1 / 1 (100%)');
+    click('#btn-question-set-change');
+    expect(getCurrentMode()).toBe('user-home');
+  });
+
+  it('restarts the entire run after the third incorrect answer', () => {
+    saveQuestionSet(makeQuestionSet());
+    App();
+    click('#btn-user-mode');
+    chooseSet('set-1');
+
+    click('[data-question-set-answer="layout-1-rack-1"]');
+    click('#btn-question-set-next');
+    click('[data-question-set-toggle-rack="layout-1-rack-2"]');
+    click('[data-question-set-answer="layout-1-box-2"]');
+    click('[data-question-set-answer="layout-1-box-2"]');
+    expect(element(document, '#question-set-feedback').textContent).toContain('2 of 3 misses');
+    expect(document.querySelector('#btn-question-set-next')).toBeNull();
+    click('[data-question-set-answer="layout-1-box-2"]');
+
+    expect(element(document, '.tutorial-strikes').textContent).toContain('Question 1 / 3');
+    expect(element(document, '.question-set-score').textContent).toContain('Score: 0 / 3 · Misses: 0 / 3');
+    expect(element(document, '#question-set-feedback').textContent).toContain('The entire question set has restarted');
+    expect(document.querySelector('#btn-question-set-next')).toBeNull();
+    expect(document.querySelectorAll('.question-set-progress .is-complete')).toHaveLength(0);
+  });
+
+  it.each(['set', 'layout'])('returns to the picker if the selected %s was deleted', deleted => {
+    saveQuestionSet(makeQuestionSet());
+    App();
+    click('#btn-user-mode');
+    // The picker was rendered before storage changed.
+    localStorage.removeItem(deleted === 'set' ? 'freezer-question-sets' : 'freezer-layouts');
+    chooseSet('set-1');
+    expect(element(document, '[role="alert"]').textContent).toContain(deleted === 'set'
+      ? 'This question set is no longer available.'
+      : 'The source layout for this question set is no longer available.');
+    click('#btn-question-set-change');
+    expect(getCurrentMode()).toBe('user-home');
+    expect(element<HTMLSelectElement>(document, '#user-question-set-select').disabled).toBe(deleted === 'set');
   });
 
   it('loads a saved set through Edit, cancels changes, and saves an update without duplicating it', () => {

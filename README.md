@@ -8,3 +8,8 @@ Ctrl+C.
 The development server uses `.parcel-dev` so production builds in `dist` do not
 overwrite its assets. `npm run build` generates the GitHub Pages build with its
 deployment-specific URL prefix.
+
+User Mode includes a Training Mode picker for saved question sets, with answer
+checking, three-miss reveals, scoring, restart, and changing sets. See
+[Training Mode](docs/training-mode.md) for the rules, shared target resolver, and
+verification commands.
