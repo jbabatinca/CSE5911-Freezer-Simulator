@@ -1,5 +1,7 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { generateLayoutId } from '../services/StorageService.js';
+import { FREEZER_LAYOUT_SCHEMA_VERSION } from '../models/freezerLayout.js';
+
 let currentEditingLayout: SavedLayout | null = null;
 
 export function getCurrentEditingLayout(): SavedLayout | null {
@@ -17,7 +19,7 @@ export function createNewEmptyLayout(): SavedLayout {
         id,
         name: 'Unnamed Layout',
         freezerData: {
-            schemaVersion: '1.0',
+            schemaVersion: FREEZER_LAYOUT_SCHEMA_VERSION,
             id,
             name: 'Unnamed Freezer',
             shelves: [],
