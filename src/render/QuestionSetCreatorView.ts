@@ -2,11 +2,7 @@ import type { QuestionSet, QuestionSetQuestion, QuestionTargetType } from '../mo
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { deleteQuestionSet, generateQuestionId, generateQuestionSetId, getAllQuestionSets, getQuestionSet, saveQuestionSet } from '../services/QuestionSetService.js';
 import { getAllLayouts, getLayout } from '../services/StorageService.js';
-
-interface QuestionTargetOption {
-    id: string;
-    label: string;
-}
+import { getQuestionTargets as getTargets } from '../services/QuestionTargetService.js';
 
 let draft: QuestionSet | null = null;
 let editorError = '';
@@ -20,38 +16,6 @@ function escapeHtml(value: string): string {
         '"': '&quot;',
         "'": '&#39;'
     })[character]!);
-}
-
-function getTargets(layout: SavedLayout, targetType: QuestionTargetType): QuestionTargetOption[] {
-    const samples = new Map((layout.freezerData.samples ?? []).map(sample => [sample.id, sample]));
-
-    if (targetType === 'rack') {
-        return layout.freezerData.shelves.flatMap(shelf =>
-            shelf.racks.map(rack => ({ id: rack.id, label: `${shelf.name} / ${rack.name}` }))
-        );
-    }
-
-    if (targetType === 'box') {
-        return layout.freezerData.shelves.flatMap(shelf =>
-            shelf.racks.flatMap(rack =>
-                rack.boxSlots.flatMap(slot => slot.box ? [{
-                    id: slot.box.id,
-                    label: `${shelf.name} / ${rack.name} / ${slot.box.name} (slot ${slot.row}-${slot.column})`
-                }] : [])
-            )
-        );
-    }
-
-    return layout.freezerData.shelves.flatMap(shelf =>
-        shelf.racks.flatMap(rack =>
-            rack.boxSlots.flatMap(slot => slot.box
-                ? slot.box.positions.flatMap(position => position.sampleId ? [{
-                    id: position.id,
-                    label: `${samples.get(position.sampleId)?.name ?? position.sampleId} / ${shelf.name} / ${rack.name} / ${slot.box!.name} / ${position.label}`
-                }] : [])
-                : [])
-        )
-    );
 }
 
 function getTargetTypeLabel(targetType: QuestionTargetType): string {

@@ -1,13 +1,32 @@
-import type { QuestionSetQuestion, QuestionTargetType } from '../models/QuestionSet.js';
+import type { QuestionSetQuestion, QuestionSetResult, QuestionTargetType } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
+import type { FreezerBox, FreezerBoxSlot, FreezerRack } from '../models/freezerLayout.js';
 import { getQuestionSet } from '../services/QuestionSetService.js';
 import { getLayout } from '../services/StorageService.js';
+import { resolveQuestionTarget } from '../services/QuestionTargetService.js';
 
 let activeQuestionSetId: string | null = null;
 let activeQuestionIndex = 0;
 let runComplete = false;
 let expandedRackId: string | null = null;
 let expandedBoxId: string | null = null;
+let misses = 0;
+let outcome: QuestionSetResult['outcome'] | null = null;
+let selectedTargetId: string | null = null;
+let results: QuestionSetResult[] = [];
+let runRestartedAfterMisses = false;
+
+function resetQuestion(): void {
+    misses = 0;
+    outcome = null;
+    selectedTargetId = null;
+    expandedRackId = null;
+    expandedBoxId = null;
+}
+
+function getScore(): number {
+    return results.filter(result => result.outcome === 'correct').length;
+}
 
 function escapeHtml(value: string): string {
     return value.replace(/[&<>"']/g, character => ({
@@ -29,19 +48,50 @@ export function startQuestionSetRun(questionSetId: string): void {
     activeQuestionSetId = questionSetId;
     activeQuestionIndex = 0;
     runComplete = false;
-    expandedRackId = null;
-    expandedBoxId = null;
+    results = [];
+    runRestartedAfterMisses = false;
+    resetQuestion();
 }
 
-export function submitQuestionSetAnswer(): void {
-    if (runComplete || !getCurrentQuestion()) return;
+export function submitQuestionSetAnswer(targetId: string): void {
+    if (runComplete || outcome) return;
+    const question = getCurrentQuestion();
+    const questionSet = activeQuestionSetId ? getQuestionSet(activeQuestionSetId) : null;
+    const layout = questionSet ? getLayout(questionSet.layoutId) : null;
+    if (!question || !layout) return;
+    const target = resolveQuestionTarget(layout, question);
+    const selection = resolveQuestionTarget(layout, { targetType: question.targetType, targetId });
+    if (!target || !selection) return;
+
+    runRestartedAfterMisses = false;
+    selectedTargetId = targetId;
+    if (targetId === target.id) outcome = 'correct';
+    else {
+        misses++;
+        if (misses >= 3) {
+            const questionSetId = activeQuestionSetId;
+            if (questionSetId) {
+                startQuestionSetRun(questionSetId);
+                runRestartedAfterMisses = true;
+            }
+            return;
+        }
+    }
+    if (outcome) {
+        results.push({ questionId: question.id, outcome, misses });
+        // Reveal nested answers even if the user was searching a different rack or box.
+        expandedRackId = target.rackId;
+        expandedBoxId = target.boxId;
+    }
+}
+
+export function advanceQuestionSetRun(): void {
+    if (runComplete || !outcome) return;
     const questionSet = activeQuestionSetId ? getQuestionSet(activeQuestionSetId) : null;
     if (!questionSet) return;
-
     activeQuestionIndex++;
     runComplete = activeQuestionIndex >= questionSet.questions.length;
-    expandedRackId = null;
-    expandedBoxId = null;
+    resetQuestion();
 }
 
 export function toggleUserQuestionSetRack(rackId: string): void {
@@ -56,7 +106,7 @@ export function toggleUserQuestionSetBox(boxId: string): void {
 export function renderUserQuestionSetView(questionSetId: string): string {
     const questionSet = getQuestionSet(questionSetId);
     if (!questionSet) {
-        return '<section class="training-view"><p class="training-empty">This question set is no longer available.</p></section>';
+        return renderRunError('This question set is no longer available.');
     }
 
     if (questionSet.questions.length === 0) {
@@ -65,17 +115,22 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                 <p class="training-eyebrow">CUSTOM TRAINING SET</p>
                 <h1>${escapeHtml(questionSet.name)}</h1>
                 <p class="question-set-empty">This set does not contain any questions.</p>
+                ${renderChangeSetButton()}
             </section>
         `;
     }
 
     const layout = getLayout(questionSet.layoutId);
     if (!layout) {
-        return `<section class="training-view"><h1>${escapeHtml(questionSet.name)}</h1><p class="training-empty">The source layout for this question set is no longer available.</p></section>`;
+        return renderRunError('The source layout for this question set is no longer available.', questionSet.name);
     }
 
+    if (activeQuestionSetId !== questionSetId) {
+        return renderRunError('Choose this question set in Training Mode to start a run.', questionSet.name);
+    }
     const question = getCurrentQuestion();
-    if (runComplete || !question) {
+    if (runComplete) {
+        const totalMisses = results.reduce((total, result) => total + result.misses, 0);
         return `
             <section class="training-view tutorial-training user-question-set-view">
                 <header class="training-heading training-active-heading">
@@ -86,13 +141,22 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                     <p class="tutorial-strikes">Set complete · ${questionSet.questions.length} questions</p>
                 </header>
                 <nav class="tutorial-levels question-set-progress" aria-label="Question progress">
-                    ${questionSet.questions.map((item, index) => `<div class="tutorial-level is-complete" aria-current="false"><strong>Q${index + 1}</strong><span>${getQuestionTypeLabel(item.targetType)}</span></div>`).join('')}
+                    ${questionSet.questions.map((item, index) => `<div class="tutorial-level is-complete" aria-current="false"><strong>Q${index + 1}</strong><span>${getQuestionTypeLabel(item.targetType)} · Correct</span></div>`).join('')}
                 </nav>
-                <section class="tutorial-completion">
+                <section class="tutorial-completion" id="question-set-completion" tabindex="-1">
+                    <h2>Training complete</h2>
+                    <p class="question-set-score">Score: ${getScore()} / ${questionSet.questions.length} (${Math.round(getScore() / questionSet.questions.length * 100)}%)</p>
+                    <p>${totalMisses} ${totalMisses === 1 ? 'miss' : 'misses'}</p>
                     <button type="button" id="btn-question-set-restart" class="btn-save">Run set again</button>
+                    ${renderChangeSetButton()}
                 </section>
             </section>
         `;
+    }
+
+    const target = question ? resolveQuestionTarget(layout, question) : null;
+    if (!question || !target) {
+        return renderRunError('A question target is no longer available in the source layout. Choose another set or ask an admin to update this set.', questionSet.name);
     }
 
     return `
@@ -102,19 +166,29 @@ export function renderUserQuestionSetView(questionSetId: string): string {
                     <p class="training-eyebrow">CUSTOM TRAINING SET</p>
                     <h1>${escapeHtml(questionSet.name)}</h1>
                     <p>${escapeHtml(questionSet.description)}</p>
+                    ${renderChangeSetButton()}
                 </div>
                 <p class="tutorial-strikes">Question ${activeQuestionIndex + 1} / ${questionSet.questions.length}</p>
             </header>
             <nav class="tutorial-levels question-set-progress" aria-label="Question progress">
                 ${questionSet.questions.map((item, index) => {
                     const isCurrent = index === activeQuestionIndex;
+                    const result = results[index];
                     const stateClass = isCurrent ? ' is-current' : index < activeQuestionIndex ? ' is-complete' : '';
-                    return `<div class="tutorial-level${stateClass}" aria-current="${isCurrent ? 'step' : 'false'}"><strong>Q${index + 1}</strong><span>${getQuestionTypeLabel(item.targetType)}</span></div>`;
+                    return `<div class="tutorial-level${stateClass}" aria-current="${isCurrent ? 'step' : 'false'}"><strong>Q${index + 1}</strong><span>${getQuestionTypeLabel(item.targetType)}${result ? ' · Correct' : ''}</span></div>`;
                 }).join('')}
             </nav>
-            <section class="training-question" aria-live="polite">
+            <section class="training-question" id="question-set-question-panel" tabindex="-1">
                 <p class="training-prompt">QUESTION ${activeQuestionIndex + 1} · ${getQuestionTypeLabel(question.targetType).toUpperCase()}</p>
                 <h2>${escapeHtml(question.prompt)}</h2>
+                <p class="question-set-score">Score: ${getScore()} / ${questionSet.questions.length} · Misses: ${misses} / 3</p>
+                <p class="question-set-rules">Earn one point by finding the target. You cannot continue until you answer correctly. Three incorrect attempts restart the entire question set.</p>
+                <p id="question-set-feedback" tabindex="-1" class="training-feedback ${outcome === 'correct' ? 'is-correct' : selectedTargetId ? 'is-incorrect' : ''}" role="status">${outcome === 'correct'
+                    ? 'Correct! One point earned. Continue when you are ready.'
+                    : runRestartedAfterMisses
+                        ? 'Three incorrect attempts. The entire question set has restarted from question 1.'
+                        : selectedTargetId ? `Incorrect. Try again. ${misses} of 3 misses.` : 'Select the matching target in the freezer layout.'}</p>
+                ${outcome ? `<button type="button" id="btn-question-set-next" class="btn-save">${activeQuestionIndex === questionSet.questions.length - 1 ? 'See results' : 'Next question'}</button>` : ''}
             </section>
             <div class="tutorial-map-content">
                 <h2>${escapeHtml(layout.name)}</h2>
@@ -122,6 +196,20 @@ export function renderUserQuestionSetView(questionSetId: string): string {
             </div>
         </section>
     `;
+}
+
+function renderChangeSetButton(): string {
+    return '<button type="button" id="btn-question-set-change">Change set</button>';
+}
+
+function renderRunError(message: string, name = 'Training Mode'): string {
+    return `<section class="training-view user-question-set-view"><h1>${escapeHtml(name)}</h1><p class="training-empty" role="alert">${escapeHtml(message)}</p>${renderChangeSetButton()}</section>`;
+}
+
+function answerAttributes(baseClass: string, targetId: string, question: QuestionSetQuestion): string {
+    const correct = outcome !== null && targetId === question.targetId;
+    const incorrect = targetId === selectedTargetId && targetId !== question.targetId;
+    return `class="${baseClass}${correct ? ' is-correct' : incorrect ? ' is-incorrect' : ''}" data-question-set-answer="${escapeHtml(targetId)}" ${outcome ? 'disabled' : ''}`;
 }
 
 function getQuestionTypeLabel(targetType: QuestionTargetType): string {
@@ -137,45 +225,43 @@ function renderQuestionSetLayout(layout: SavedLayout, question: QuestionSetQuest
                         <span class="tutorial-shelf-label">SHELF</span>
                         <h2>${escapeHtml(shelf.name)}</h2>
                     </header>
-                    ${shelf.racks.length === 0 ? '<p>No racks on this shelf.</p>' : `<ul class="tutorial-racks">${shelf.racks.map(rack => renderRack(layout, shelf.id, rack, question)).join('')}</ul>`}
+                    ${shelf.racks.length === 0 ? '<p>No racks on this shelf.</p>' : `<ul class="tutorial-racks">${shelf.racks.map(rack => renderRack(layout, rack, question)).join('')}</ul>`}
                 </section>
             `).join('')}
         </section>
     `;
 }
 
-function renderRack(layout: SavedLayout, shelfId: string, rack: SavedLayout['freezerData']['shelves'][number]['racks'][number], question: QuestionSetQuestion): string {
+function renderRack(layout: SavedLayout, rack: FreezerRack, question: QuestionSetQuestion): string {
     const rackExpanded = expandedRackId === rack.id;
     const rackColor = isHexColor(rack.color) ? rack.color : '#FFFFFF';
     const contents = question.targetType !== 'rack' && rackExpanded
         ? `<div class="tutorial-boxes">${rack.boxSlots.map(slot => slot.box
-            ? renderBox(layout, shelfId, rack, slot, question)
+            ? renderBox(layout, slot, question)
             : '').join('')}</div>`
         : '';
 
     return `
         <li class="tutorial-rack${rackExpanded ? ' is-expanded' : ''}" style="--tutorial-rack-color: ${rackColor}">
             ${question.targetType === 'rack'
-                ? `<button type="button" class="tutorial-rack-target" data-question-set-answer="${escapeHtml(rack.id)}"><span class="tutorial-color-key" aria-hidden="true"></span><span>${escapeHtml(rack.name)}</span></button>`
+                ? `<button type="button" ${answerAttributes('tutorial-rack-target', rack.id, question)}><span class="tutorial-color-key" aria-hidden="true"></span><span>${escapeHtml(rack.name)}</span></button>`
                 : `<button type="button" class="tutorial-rack-toggle" data-question-set-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${rackExpanded}"><span class="tutorial-color-key" aria-hidden="true"></span><span>${rackExpanded ? '▼' : '▶'} ${escapeHtml(rack.name)}</span></button>`}
             ${contents}
         </li>
     `;
 }
 
-function renderBox(layout: SavedLayout, shelfId: string, rack: SavedLayout['freezerData']['shelves'][number]['racks'][number], slot: SavedLayout['freezerData']['shelves'][number]['racks'][number]['boxSlots'][number], question: QuestionSetQuestion): string {
+function renderBox(layout: SavedLayout, slot: FreezerBoxSlot, question: QuestionSetQuestion): string {
     const box = slot.box!;
-    const rackId = rack.id;
-    const rackColor = isHexColor(rack.color) ? rack.color : '#FFFFFF';
     const boxColor = isHexColor(box.color) ? box.color : '#FFFFFF';
     const boxForeground = getReadableTextColor(boxColor);
     if (question.targetType === 'box') {
-        return `<button type="button" class="tutorial-box-target" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-question-set-answer="${escapeHtml(box.id)}">${escapeHtml(box.name)}</button>`;
+        return `<button type="button" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" ${answerAttributes('tutorial-box-target', box.id, question)}>${escapeHtml(box.name)}</button>`;
     }
 
     const boxExpanded = expandedBoxId === box.id;
     const boxDetails = question.targetType === 'sample' && boxExpanded
-        ? renderSamplePositions(layout, box, boxColor, boxForeground)
+        ? renderSamplePositions(layout, box, boxColor, boxForeground, question)
         : '';
     return `
         <div class="tutorial-box${boxExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}">
@@ -185,7 +271,7 @@ function renderBox(layout: SavedLayout, shelfId: string, rack: SavedLayout['free
     `;
 }
 
-function renderSamplePositions(layout: SavedLayout, box: NonNullable<SavedLayout['freezerData']['shelves'][number]['racks'][number]['boxSlots'][number]['box']>, boxColor: string, boxForeground: string): string {
+function renderSamplePositions(layout: SavedLayout, box: FreezerBox, boxColor: string, boxForeground: string, question: QuestionSetQuestion): string {
     const samples = new Map((layout.freezerData.samples ?? []).map(sample => [sample.id, sample]));
     const positions = new Map(box.positions.map(position => [`${position.row}-${position.column}`, position]));
     let cells = '';
@@ -200,7 +286,7 @@ function renderSamplePositions(layout: SavedLayout, box: NonNullable<SavedLayout
 
             const sampleName = position.sampleId ? samples.get(position.sampleId)?.name ?? position.sampleId : position.label;
             if (position.sampleId) {
-                cells += `<button type="button" class="tutorial-sample-target" data-question-set-answer="${escapeHtml(position.id)}" title="${escapeHtml(sampleName)}" aria-label="Select ${escapeHtml(sampleName)}, position ${escapeHtml(position.label)}">${escapeHtml(position.label)}</button>`;
+                cells += `<button type="button" title="${escapeHtml(sampleName)}" aria-label="Select ${escapeHtml(sampleName)}, position ${escapeHtml(position.label)}" ${answerAttributes('tutorial-sample-target', position.id, question)}>${escapeHtml(position.label)}</button>`;
             } else {
                 cells += '<div class="tutorial-sample-empty" aria-hidden="true"></div>';
             }

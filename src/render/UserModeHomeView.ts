@@ -26,7 +26,8 @@ export function UserModeHomeView(): string {
             </button>
         </div>
         <section class="user-question-set-launcher" aria-labelledby="custom-training-title">
-            <h3 id="custom-training-title">Custom Training</h3>
+            <h3 id="custom-training-title">Training Mode</h3>
+            <p>Choose a question set to practice finding racks, boxes, and specimens. Your score is shown at the end.</p>
             <label for="user-question-set-select">Question set</label>
             <div class="user-question-set-controls">
                 <select id="user-question-set-select" ${questionSets.length === 0 ? 'disabled' : ''}>

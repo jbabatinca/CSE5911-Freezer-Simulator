@@ -1216,6 +1216,45 @@ button:focus-visible, input:focus-visible {
   border-top: 4px solid var(--primary);
 }
 
+.question-set-score {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.question-set-rules {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.user-question-set-view .tutorial-completion button {
+  margin: 12px 8px 0 0;
+}
+
+.user-question-set-view .tutorial-level.is-revealed {
+  border-color: #a66c16;
+  background: #fff5e1;
+}
+
+.question-set-run-view [data-question-set-answer]:disabled {
+  cursor: default;
+}
+
+.question-set-run-view [data-question-set-answer].is-correct,
+.question-set-run-view [data-question-set-answer].is-correct:hover {
+  border-color: var(--teal);
+  background: #e2f4f0;
+  color: #155f58;
+}
+
+.question-set-run-view [data-question-set-answer].is-incorrect,
+.question-set-run-view [data-question-set-answer].is-incorrect:hover {
+  border-color: var(--danger);
+  background: #fbecef;
+  color: var(--danger);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
