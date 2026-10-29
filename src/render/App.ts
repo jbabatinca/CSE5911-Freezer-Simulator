@@ -671,7 +671,7 @@ export function App(): void {
             });
         }
         // Configuration mode - Any New Layout button (multiple could exist)
-        document.querySelectorAll('[id^="btn-new-layout"], [id^="btn-add-layout"]').forEach(btn => {
+        document.querySelectorAll('[id^="btn-add-freezer"]').forEach(btn => {
         btn.addEventListener('click', () => {
             openNewLayoutModal();
             render();
