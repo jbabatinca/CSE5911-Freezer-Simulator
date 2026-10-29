@@ -4,6 +4,7 @@ import type { FreezerBox, FreezerBoxSlot, FreezerRack } from '../models/freezerL
 import { getQuestionSet } from '../services/QuestionSetService.js';
 import { getLayout } from '../services/StorageService.js';
 import { resolveQuestionTarget } from '../services/QuestionTargetService.js';
+import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 
 let activeQuestionSetId: string | null = null;
 let activeQuestionIndex = 0;
@@ -337,8 +338,8 @@ function renderSamplePositions(layout: SavedLayout, box: FreezerBox, boxColor: s
     const positions = new Map(box.positions.map(position => [`${position.row}-${position.column}`, position]));
     let cells = '';
 
-    for (let row = 1; row <= 9; row++) {
-        for (let column = 1; column <= 9; column++) {
+    for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.boxRows; row++) {
+        for (let column = 1; column <= FREEZER_LAYOUT_LIMITS.boxColumns; column++) {
             const position = positions.get(`${row}-${column}`);
             if (!position) {
                 cells += '<div class="tutorial-sample-empty" aria-hidden="true"></div>';
@@ -355,10 +356,6 @@ function renderSamplePositions(layout: SavedLayout, box: FreezerBox, boxColor: s
     }
 
     return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}">${cells}</div>`;
-}
-
-function isHexColor(value: string | undefined): value is string {
-    return value !== undefined && /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
 function getReadableTextColor(hexColor: string): string {

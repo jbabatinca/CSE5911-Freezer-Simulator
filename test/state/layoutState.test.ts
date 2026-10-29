@@ -5,6 +5,8 @@ import {
   setCurrentEditingLayout,
   createNewEmptyLayout
 } from '../../src/state/layoutState.js';
+import { validateFreezerLayout } from '../../src/services/LayoutValidator.js';
+import { FREEZER_LAYOUT_SCHEMA_VERSION } from '../../src/models/freezerLayout.js';
 
 describe('Layout State Management', () => {
   beforeEach(() => {
@@ -113,6 +115,12 @@ describe('Layout State Management', () => {
       expect(newLayout.freezerData.schemaVersion).toBe('1.0');
       expect(newLayout.freezerData.shelves).toHaveLength(0);
       expect(newLayout.freezerData.samples).toHaveLength(0);
+    });
+
+    it('should create a layout that passes schema validation', () => {
+      const newLayout = createNewEmptyLayout();
+      expect(newLayout.freezerData.schemaVersion).toBe(FREEZER_LAYOUT_SCHEMA_VERSION);
+      expect(validateFreezerLayout(newLayout.freezerData).ok).toBe(true);
     });
 
     it('should generate unique IDs for new layouts', async () => {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import freezerData from '../../src/data/sample-freezer-layout.json';
+import schema from '../../src/models/freezer-layout.schema.json';
+import { FREEZER_LAYOUT_LIMITS, FREEZER_LAYOUT_SCHEMA_VERSION, isHexColor } from '../../src/models/freezerLayout';
 
 describe('Freezer Layout Schema', () => {
   it('should have valid freezer structure', () => {
@@ -78,4 +80,30 @@ describe('Freezer Layout Schema', () => {
       });
     });
   });
+
+  it('reads the layout limits from the schema', () => {
+    expect(FREEZER_LAYOUT_LIMITS).toEqual({
+      maxShelvesPerFreezer: 4, maxRacksPerShelf: 6, maxBoxSlotsPerRack: 16,
+      maxPositionsPerBox: 81, rackRows: 4, rackColumns: 4,
+      boxRows: 9, boxColumns: 9, maxPositionRows: 9, maxPositionColumns: 9,
+    });
+  });
+
+  it('keeps the version constant in sync with the schema', () => {
+    expect(FREEZER_LAYOUT_SCHEMA_VERSION).toBe(schema.properties.schemaVersion.const);
+  });
 });
+
+describe('isHexColor', () => {
+  it.each(['#FFFFFF', '#abcdef', '#000000', '#2878C7'])('accepts %s', (color) => {
+    expect(isHexColor(color)).toBe(true);
+  });
+
+  it.each(['#fff', '#GGGGGG', 'blue', '', 'ffffff', '#12345', '#1234567', undefined, null])(
+    'rejects %s',
+    (color) => {
+      expect(isHexColor(color as string | undefined | null)).toBe(false);
+    }
+  );
+});
+

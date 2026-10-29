@@ -40,6 +40,7 @@ import {
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
+import { validateFreezerLayout } from '../services/LayoutValidator.js';
 
 function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
     return new Promise(resolve => {
@@ -572,8 +573,9 @@ export function App(): void {
                             const json = JSON.parse(event.target?.result as string);
                             
                             // Validate it has the required freezer structure
-                            if (!json.schemaVersion || !json.id || !json.name || !json.shelves) {
-                                alert('Invalid freezer layout file');
+                            const result = validateFreezerLayout(json);
+                            if (!result.ok) {
+                                alert('Invalid freezer layout file:\n' + result.errors.slice(0, 5).join('\n'));
                                 return;
                             }
                             
@@ -581,7 +583,7 @@ export function App(): void {
                             const uploadedLayout: SavedLayout = {
                                 id: generateLayoutId(),
                                 name: json.name,
-                                freezerData: json,
+                                freezerData: result.layout,
                                 createdAt: new Date().toISOString(),
                                 updatedAt: new Date().toISOString()
                             };
