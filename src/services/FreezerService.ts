@@ -1,6 +1,6 @@
 import type { FreezerShelf, FreezerRack, FreezerBox, BoxPosition, Sample } from '../models/freezerLayout.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
+import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -10,7 +10,7 @@ function generateId(prefix: string): string {
 export function addShelf(layout: SavedLayout): void {
   const freezer = layout.freezerData;
   if (freezer.shelves.length >= FREEZER_LAYOUT_LIMITS.maxShelvesPerFreezer) {
-    alert('Maximum shelves reached (4)');
+    alert(`Maximum shelves reached (${FREEZER_LAYOUT_LIMITS.maxShelvesPerFreezer})`);
     return;
   }
 
@@ -36,7 +36,7 @@ export function addRack(layout: SavedLayout, shelfId: string): void {
   if (!shelf) return;
 
   if (shelf.racks.length >= FREEZER_LAYOUT_LIMITS.maxRacksPerShelf) {
-    alert('Maximum racks per shelf reached (6)');
+    alert(`Maximum racks per shelf reached (${FREEZER_LAYOUT_LIMITS.maxRacksPerShelf})`);
     return;
   }
 
@@ -55,7 +55,7 @@ export function renameRack(layout: SavedLayout, rackId: string, rackName: string
 }
 
 export function setRackColor(layout: SavedLayout, rackId: string, color: string): void {
-  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  if (!isHexColor(color)) return;
   const rack = layout.freezerData.shelves.flatMap(shelf => shelf.racks).find(item => item.id === rackId);
   if (rack) rack.color = color;
 }
@@ -82,8 +82,8 @@ export function addBox(layout: SavedLayout, shelfIndex: number, rackIndex: numbe
   const newBox: FreezerBox = {
     id: generateId('box'),
     name: boxName?.trim() || `Box ${row}-${column}`,
-    rows: 9,
-    columns: 9,
+    rows: FREEZER_LAYOUT_LIMITS.boxRows as FreezerBox['rows'],
+    columns: FREEZER_LAYOUT_LIMITS.boxColumns as FreezerBox['columns'],
     positions: createEmptySamplePositions()
   };
 
@@ -103,7 +103,7 @@ export function renameBox(layout: SavedLayout, boxId: string, boxName: string): 
 }
 
 export function setBoxColor(layout: SavedLayout, boxId: string, color: string | null): void {
-  if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  if (color !== null && !isHexColor(color)) return;
   for (const shelf of layout.freezerData.shelves) {
     for (const rack of shelf.racks) {
       const box = rack.boxSlots.find(slot => slot.box?.id === boxId)?.box;
@@ -187,7 +187,7 @@ export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: nu
   if (!slot || !slot.box) return;
 
   if (slot.box.positions.length >= FREEZER_LAYOUT_LIMITS.maxPositionsPerBox) {
-    alert('Maximum samples per box reached (81)');
+    alert(`Maximum samples per box reached (${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})`);
     return;
   }
 
@@ -238,8 +238,8 @@ export function removeSample(layout: SavedLayout, shelfIndex: number, rackIndex:
 // Helper functions
 function createEmptyBoxSlots() {
   const slots = [];
-  for (let row = 1; row <= 4; row++) {
-    for (let col = 1; col <= 4; col++) {
+  for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.rackRows; row++) {
+    for (let col = 1; col <= FREEZER_LAYOUT_LIMITS.rackColumns; col++) {
       slots.push({ row, column: col, box: null });
     }
   }

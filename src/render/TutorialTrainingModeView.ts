@@ -1,3 +1,5 @@
+import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
+
 type TutorialLevel = 1 | 2 | 3;
 type FeedbackKind = 'correct' | 'incorrect' | 'progress' | 'complete';
 
@@ -242,8 +244,8 @@ function targetClass(targetId: string): string {
 function renderSampleGrid(box: TutorialBox): string {
     const samplesByPosition = new Map(box.samples.map(sample => [`${sample.row}-${sample.column}`, sample]));
     let cells = '';
-    for (let row = 1; row <= 9; row++) {
-        for (let column = 1; column <= 9; column++) {
+    for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.boxRows; row++) {
+        for (let column = 1; column <= FREEZER_LAYOUT_LIMITS.boxColumns; column++) {
             const sample = samplesByPosition.get(`${row}-${column}`);
             if (!sample) {
                 cells += '<div class="tutorial-sample-empty" aria-hidden="true"></div>';

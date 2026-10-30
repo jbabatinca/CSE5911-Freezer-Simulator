@@ -1,5 +1,6 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { BoxPosition, FreezerBox, FreezerRack } from '../models/freezerLayout.js';
+import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 import {
   getExpandedShelfId,
   getExpandedRackId,
@@ -94,7 +95,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
                         ${isExpanded ? '▼' : '▶'}
                       </button>
                       <h3>${shelf.name}</h3>
-                      ${!readOnly && shelves.length < 4 ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
+                      ${!readOnly && shelves.length < FREEZER_LAYOUT_LIMITS.maxShelvesPerFreezer ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
                     </div>
 
                     ${isExpanded ? `
@@ -129,13 +130,13 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
                             }).join('')}
                           </ul>
                         `}
-                      ${!readOnly && shelf.racks.length < 6 ? `<button id="btn-add-rack" class="btn-add">+ Add Rack to ${shelf.name}</button>` : ''}
+                      ${!readOnly && shelf.racks.length < FREEZER_LAYOUT_LIMITS.maxRacksPerShelf ? `<button id="btn-add-rack" class="btn-add">+ Add Rack to ${shelf.name}</button>` : ''}
                     ` : ''}
                   </section>
                 `;
               }).join('')}
 
-          ${!readOnly && shelves.length < 4 ? `<button id="btn-add-shelf" class="btn-add">+ Add Shelf</button>` : ''}
+          ${!readOnly && shelves.length < FREEZER_LAYOUT_LIMITS.maxShelvesPerFreezer ? `<button id="btn-add-shelf" class="btn-add">+ Add Shelf</button>` : ''}
         </section>
       </div>
     </div>
@@ -158,7 +159,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       html += `
         <div class="box-container color-coded${boxExpanded ? ' box-selected' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
-            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/81)
+            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
           </button>
           ${!readOnly ? `<button id="btn-rename-box-${slot.box!.id}" class="btn-rename-box" aria-label="Rename ${escapeHtml(slot.box!.name)}">Rename</button>` : ''}
           ${!readOnly ? renderColorPicker('box', slot.box!.id, slot.box!.name, boxColor, boxInheritsRackColor) : ''}
@@ -200,19 +201,20 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
 }
 
 function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
-  const grid = Array<BoxPosition | null>(81).fill(null);
+  const { boxRows, boxColumns } = FREEZER_LAYOUT_LIMITS;
+  const grid = Array<BoxPosition | null>(boxRows * boxColumns).fill(null);
   const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
   box.positions.forEach((pos) => {
-    const idx = (pos.row - 1) * 9 + (pos.column - 1);
+    const idx = (pos.row - 1) * boxColumns + (pos.column - 1);
     grid[idx] = pos;
   });
 
   let html = '';
-  for (let i = 0; i < 81; i++) {
+  for (let i = 0; i < boxRows * boxColumns; i++) {
     const pos = grid[i];
-    const row = Math.floor(i / 9) + 1;
-    const col = (i % 9) + 1;
+    const row = Math.floor(i / boxColumns) + 1;
+    const col = (i % boxColumns) + 1;
     const label = String.fromCharCode(64 + row) + col;
 
     if (pos) {
@@ -249,10 +251,6 @@ function escapeHtml(value: string): string {
     '"': '&quot;',
     "'": '&#39;'
   })[character]!);
-}
-
-function isHexColor(value: string | undefined): value is string {
-  return value !== undefined && /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
 function getReadableTextColor(hexColor: string): string {

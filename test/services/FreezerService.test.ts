@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { SavedLayout } from '../../src/models/SavedLayout.js';
 import type { FreezerShelf } from '../../src/models/freezerLayout.js';
 import {
@@ -266,5 +266,66 @@ describe('FreezerService - Sample Operations', () => {
     const box = layout.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box;
     expect(box?.positions).toHaveLength(1);
     expect(box?.positions[0]?.label).toBe('A1');
+  });
+});
+
+describe('FreezerService - schema-driven limits', () => {
+  let layout: SavedLayout;
+  let alertMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    alertMock = vi.fn();
+    vi.stubGlobal('alert', alertMock);
+    layout = {
+      id: 'test-layout',
+      name: 'Test Layout',
+      freezerData: {
+        schemaVersion: '1.0',
+        id: 'test-freezer',
+        name: 'Test Freezer',
+        shelves: [],
+        samples: []
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    addShelf(layout);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('should create a new rack with 16 box slots in a 4x4 grid', () => {
+    addRack(layout, layout.freezerData.shelves[0]!.id);
+    const slots = layout.freezerData.shelves[0]!.racks[0]!.boxSlots;
+    expect(slots).toHaveLength(16);
+    expect(slots[0]).toEqual({ row: 1, column: 1, box: null });
+    expect(slots[15]).toEqual({ row: 4, column: 4, box: null });
+  });
+
+  it('should create a new box with 9x9 dimensions and no positions', () => {
+    addRack(layout, layout.freezerData.shelves[0]!.id);
+    addBox(layout, 0, 0, 1, 1);
+    const box = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!;
+    expect(box.rows).toBe(9);
+    expect(box.columns).toBe(9);
+    expect(box.positions).toEqual([]);
+  });
+
+  it('should alert with the shelf limit when adding a fifth shelf', () => {
+    addShelf(layout);
+    addShelf(layout);
+    addShelf(layout);
+    addShelf(layout);
+    expect(layout.freezerData.shelves).toHaveLength(4);
+    expect(alertMock).toHaveBeenCalledWith('Maximum shelves reached (4)');
+  });
+
+  it('should alert with the rack limit when adding a seventh rack', () => {
+    const shelfId = layout.freezerData.shelves[0]!.id;
+    for (let i = 0; i < 7; i++) addRack(layout, shelfId);
+    expect(layout.freezerData.shelves[0]!.racks).toHaveLength(6);
+    expect(alertMock).toHaveBeenCalledWith('Maximum racks per shelf reached (6)');
   });
 });
