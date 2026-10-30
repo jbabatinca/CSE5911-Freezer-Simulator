@@ -1,5 +1,5 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
-import type { BoxPosition, FreezerBox, FreezerRack } from '../models/freezerLayout.js';
+import type { SamplePosition, FreezerBox, FreezerRack, Sample } from '../models/freezerLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 import {
   getExpandedShelfId,
@@ -143,7 +143,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
   `;
 }
 
-function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
+function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean, samples: Sample[]): string {
   let html = '<div class="box-grid">';
 
   for (let i = 0; i < rack.boxSlots.length; i++) {
@@ -200,9 +200,9 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
   return html;
 }
 
-function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: SavedLayout['freezerData']['samples']): string {
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: Sample[]): string {
   const { boxRows, boxColumns } = FREEZER_LAYOUT_LIMITS;
-  const grid = Array<BoxPosition | null>(boxRows * boxColumns).fill(null);
+  const grid = Array<SamplePosition | null>(boxRows * boxColumns).fill(null);
   const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
 
   box.positions.forEach((pos) => {

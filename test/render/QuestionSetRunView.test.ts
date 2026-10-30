@@ -188,7 +188,7 @@ describe('Question set run', () => {
     layout.freezerData.shelves[0]!.name = text;
     layout.freezerData.shelves[0]!.racks[0]!.name = text;
     layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.name = text;
-    layout.freezerData.samples[0]!.name = text;
+    layout.freezerData.samples![0]!.name = text;
     saveLayout(layout);
     const set = makeQuestionSet({ name: text, description: text });
     set.questions.forEach(question => { question.prompt = text; });

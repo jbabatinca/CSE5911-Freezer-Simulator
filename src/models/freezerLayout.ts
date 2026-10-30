@@ -32,77 +32,14 @@ export function isHexColor(value: string | undefined | null): value is string {
 export type FreezerLayoutSchemaVersion =
   typeof FREEZER_LAYOUT_SCHEMA_VERSION;
 
-/**
- * A sample that can be stored in a box position.
- */
-export interface Sample {
-  id: string;
-  name: string;
-  description?: string;
-}
 
-/**
- * A single position inside a storage box.
- * Example: position A1.
- */
-export interface BoxPosition {
-  id: string;
-  label: string;
-  row: number;
-  column: number;
-  sampleId?: string;
-}
+export type {
+  FreezerLayout,
+  FreezerShelf,
+  FreezerRack,
+  FreezerBoxSlot,
+  FreezerBox,
+  SamplePosition,
+  Sample,
+} from './generated/freezerLayout.types.js';
 
-/**
- * A box can contain zero to 81 positions.
- */
-export interface FreezerBox {
-  id: string;
-  name: string;
-  color?: string;
-  rows: 9;
-  columns: 9;
-  positions: BoxPosition[];
-}
-
-/**
- * A fixed placeholder for a box in the rack's 4x4 grid.
- * Each slot can contain a box or be empty (null).
- */
-export interface FreezerBoxSlot {
-  row: number;      // 1-4
-  column: number;   // 1-4
-  box: FreezerBox | null;
-}
-
-/**
- * A rack can contain zero to 16 boxes.
- */
-export interface FreezerRack {
-  id: string;
-  name: string;
-  color?: string;
-  boxSlots: FreezerBoxSlot[];
-}
-
-/**
- * A shelf can contain zero to six racks.
- */
-export interface FreezerShelf {
-  id: string;
-  name: string;
-  racks: FreezerRack[];
-}
-
-/**
- * Main freezer layout.
- *
- * Freezer → Shelves → Racks → BoxSlots → Boxes → Positions → Samples
- */
-export interface FreezerLayout {
-  schemaVersion: FreezerLayoutSchemaVersion;
-  id: string;
-  name: string;
-  shelves: FreezerShelf[];
-  samples: Sample[];
-}
