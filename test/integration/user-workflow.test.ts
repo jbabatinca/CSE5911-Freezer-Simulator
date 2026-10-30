@@ -175,7 +175,7 @@ describe('User Workflow Integration Tests', () => {
       expect(retrieved?.id).toBe(originalId);
       expect(retrieved?.createdAt).toBe(originalCreatedAt);
       expect(retrieved?.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box).not.toBeNull();
-      expect(retrieved?.freezerData.samples[0]?.id).toBe(sampleId);
+      expect(retrieved?.freezerData.samples?.[0]?.id).toBe(sampleId);
     });
 
     it('should handle concurrent operations on same layout', () => {

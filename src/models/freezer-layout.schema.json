@@ -16,7 +16,7 @@
     "name": {
       "$ref": "#/$defs/nonEmptyString"
     },
-        "shelves": {
+    "shelves": {
       "type": "array",
       "maxItems": 4,
       "items": {
@@ -25,21 +25,8 @@
     },
     "samples": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "name"],
-        "properties": {
-          "id": {
-            "$ref": "#/$defs/nonEmptyString"
-          },
-          "name": {
-            "$ref": "#/$defs/nonEmptyString"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
+        "items": {
+        "$ref": "#/$defs/sample"
       }
     }
   },
@@ -52,7 +39,27 @@
       "type": "string",
       "pattern": "^#[0-9A-Fa-f]{6}$"
     },
+    "sample": {
+      "title": "Sample",
+      "description": "A sample that can be stored in a box position.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
     "shelf": {
+      "title": "FreezerShelf",
+      "description": "A shelf can contain zero to six racks.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "racks"],
@@ -73,6 +80,8 @@
       }
     },
     "rack": {
+      "title": "FreezerRack",
+      "description": "A rack can contain zero to 16 boxes.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "boxSlots"],
@@ -97,6 +106,8 @@
       }
     },
     "boxSlot": {
+      "title": "FreezerBoxSlot",
+      "description": "A fixed placeholder for a box in the rack's 4x4 grid. Each slot can contain a box or be empty (null).",
       "type": "object",
       "additionalProperties": false,
       "required": ["row", "column"],
@@ -124,6 +135,8 @@
       }
     },             
     "box": {
+      "title": "FreezerBox",
+      "description": "A box can contain zero to 81 positions.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "rows", "columns", "positions"],
@@ -155,6 +168,8 @@
       }
     },
     "position": {
+      "title": "SamplePosition",
+      "description": "A single position inside a storage box, for example A1.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "label", "row", "column"],

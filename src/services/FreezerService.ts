@@ -1,4 +1,4 @@
-import type { FreezerShelf, FreezerRack, FreezerBox, BoxPosition, Sample } from '../models/freezerLayout.js';
+import type { FreezerShelf, FreezerRack, FreezerBox, SamplePosition, Sample } from '../models/freezerLayout.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 
@@ -168,10 +168,11 @@ export function assignSampleToPosition(layout: SavedLayout, positionId: string, 
 }
 
 export function removeSampleFromLayout(layout: SavedLayout, sampleId: string): void {
-  const freezer = layout.freezerData;
-  const idx = freezer.samples.findIndex(s => s.id === sampleId);
+  const samples = layout.freezerData.samples;
+  if (!samples) return;
+  const idx = samples.findIndex(s => s.id === sampleId);
   if (idx >= 0) {
-    freezer.samples.splice(idx, 1);
+    samples.splice(idx, 1);
   }
 }
 
@@ -195,7 +196,7 @@ export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: nu
     ? createSample(layout, sampleName.trim())
     : getUnassignedSample(layout);
   const positionLabel = String.fromCharCode(64 + sampleRow) + sampleCol;
-  const newPosition: BoxPosition = {
+  const newPosition: SamplePosition = {
     id: generateId('pos'),
     label: positionLabel,
     row: sampleRow,
