@@ -205,7 +205,7 @@ describe('Question set application workflow', () => {
 
     expect(element(document, '.tutorial-strikes').textContent).toContain('Question 1 / 3');
     expect(element(document, '.question-set-score').textContent).toContain('Score: 0 / 3 · Misses: 0 / 3');
-    expect(element(document, '#question-set-feedback').textContent).toContain('The entire question set has restarted');
+    expect(element(document, '#question-set-feedback').textContent).toContain('Three incorrect attempts. Restart from the beginning.');
     expect(document.querySelector('#btn-question-set-next')).toBeNull();
     expect(document.querySelectorAll('.question-set-progress .is-complete')).toHaveLength(0);
   });

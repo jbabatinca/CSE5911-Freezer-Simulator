@@ -65,7 +65,7 @@ describe('Training answer checking and scoring', () => {
     expect(view().querySelector('#btn-question-set-next')).toBeNull();
     submitQuestionSetAnswer(wrongId);
     expect(view().textContent).toContain('Question 1 / 1');
-    expect(feedback()).toContain('Three incorrect attempts. The entire question set has restarted');
+    expect(feedback()).toContain('Three incorrect attempts. Restart from the beginning.');
     expect(score()).toContain('Score: 0 / 1 · Misses: 0 / 3');
     expect(view().querySelector('#btn-question-set-next')).toBeNull();
     expect(view().querySelector('.tutorial-rack-target.is-correct')).toBeNull();

@@ -20,7 +20,7 @@ import {
     saveQuestionSetDraft,
     removeSavedQuestionSet
 } from './QuestionSetCreatorView.js';
-import { advanceQuestionSetRun, renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
+import { advanceQuestionSetRun, refreshQuestionSetTimer, renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
@@ -89,6 +89,15 @@ export function App(): void {
 
     initializeAuth();
     render();
+
+    // Keeps the custom-training countdown live and restarts the set when it expires.
+    window.setInterval(() => {
+        if (getCurrentMode() !== 'question-set-user') return;
+        if (refreshQuestionSetTimer()) {
+            render();
+            document.getElementById('question-set-feedback')?.focus();
+        }
+    }, 250);
 
     function render(): void {
         if (!app) return;
