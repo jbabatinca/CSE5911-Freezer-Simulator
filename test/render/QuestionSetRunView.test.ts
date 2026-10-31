@@ -89,7 +89,7 @@ describe('Question set run', () => {
     answerAndAdvance();
   }
 
-  it('shows the sample grid only in the expanded box and answers by occupied position ID', () => {
+  it('shows the expanded sample grid below the box grid and answers by occupied position ID', () => {
     sampleQuestion();
     expect(answers()).toEqual([]);
     toggleUserQuestionSetRack('layout-1-rack-1');
@@ -99,6 +99,13 @@ describe('Question set run', () => {
     expect(answers()).toEqual(['layout-1-position-1']);
     expect(element(view(), '.tutorial-sample-grid').children).toHaveLength(81);
     expect(view().querySelectorAll('.tutorial-sample-empty')).toHaveLength(80);
+    const root = view();
+    const cards = element(root, '.tutorial-boxes');
+    const details = element(root, '.question-set-box-details');
+    expect(cards.nextElementSibling).toBe(details);
+    expect(details.querySelector('.tutorial-sample-grid')).not.toBeNull();
+    expect(cards.querySelector('.tutorial-sample-grid')).toBeNull();
+    expect(details.querySelector('h3')?.textContent).toBe('Box 1 — positions');
     expect(element(view(), '[data-question-set-answer]').getAttribute('aria-label')).toBe('Select Serum, position A1');
     toggleUserQuestionSetBox('layout-1-box-1');
     expect(view().querySelector('.tutorial-sample-grid')).toBeNull();
@@ -156,14 +163,105 @@ describe('Question set run', () => {
     expect(view().querySelector('[onmouseover]')).toBeNull();
   });
 
-  it('falls back to white for an invalid box color even when its rack has a valid color', () => {
+  it.each([undefined, 'red'])('inherits the rack color for box color %s', color => {
     const layout = makeLayout();
     layout.freezerData.shelves[0]!.racks[0]!.color = '#000000';
-    layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.color = 'red';
+    const box = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!;
+    if (color === undefined) delete box.color;
+    else box.color = color;
+    saveLayout(layout);
+    answerAndAdvance();
+    toggleUserQuestionSetRack('layout-1-rack-1');
+    expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-color')).toBe('#000000');
+    expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-foreground')).toBe('#ffffff');
+    answerAndAdvance();
+    toggleUserQuestionSetRack('layout-1-rack-1');
+    toggleUserQuestionSetBox('layout-1-box-1');
+    expect(element(view(), '.tutorial-sample-grid').style.getPropertyValue('--tutorial-box-color')).toBe('#000000');
+  });
+
+  it('keeps an explicitly white box white on a colored rack', () => {
+    const layout = makeLayout();
+    layout.freezerData.shelves[0]!.racks[0]!.color = '#174477';
     saveLayout(layout);
     answerAndAdvance();
     toggleUserQuestionSetRack('layout-1-rack-1');
     expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-color')).toBe('#FFFFFF');
+  });
+
+  it('renders older layouts without colors as white rack and box cards', () => {
+    const layout = makeLayout();
+    const rack = layout.freezerData.shelves[0]!.racks[0]!;
+    delete rack.color;
+    delete rack.boxSlots[0]!.box!.color;
+    saveLayout(layout);
+    answerAndAdvance();
+    toggleUserQuestionSetRack(rack.id);
+    expect(element(view(), '.tutorial-rack').style.getPropertyValue('--tutorial-rack-color')).toBe('#FFFFFF');
+    expect(element(view(), '.tutorial-box-target').style.getPropertyValue('--tutorial-box-color')).toBe('#FFFFFF');
+  });
+
+  it('preserves physical box coordinates in all 16 slots, including empty placeholders', () => {
+    const layout = makeLayout();
+    const rack = layout.freezerData.shelves[0]!.racks[0]!;
+    const box = rack.boxSlots[0]!.box!;
+    // A sparse, out-of-order layout must not shift a box to an earlier slot.
+    rack.boxSlots = [{ row: 4, column: 4, box }, { row: 1, column: 1, box: null }];
+    saveLayout(layout);
+    answerAndAdvance();
+    toggleUserQuestionSetRack(rack.id);
+    const grid = element(view(), '.tutorial-boxes');
+    expect(grid.children).toHaveLength(16);
+    expect(grid.querySelectorAll('.question-set-box-slot')).toHaveLength(15);
+    expect(grid.children[0]?.getAttribute('aria-label')).toBe('Empty box slot, row 1, column 1');
+    expect(grid.children[15]?.getAttribute('data-question-set-answer')).toBe(box.id);
+    expect(grid.querySelectorAll('button')).toHaveLength(1);
+  });
+
+  it('renders a full rack without placeholders and keeps every box answer available', () => {
+    const layout = makeLayout();
+    const rack = layout.freezerData.shelves[0]!.racks[0]!;
+    const original = rack.boxSlots[0]!.box!;
+    rack.boxSlots = Array.from({ length: 16 }, (_, index) => ({
+      row: Math.floor(index / 4) + 1,
+      column: index % 4 + 1,
+      box: { ...original, id: index === 0 ? original.id : `full-rack-box-${index}` },
+    }));
+    saveLayout(layout);
+    answerAndAdvance();
+    toggleUserQuestionSetRack(rack.id);
+    const root = view();
+    expect(element(root, '.question-set-rack-capacity').textContent).toBe('16 / 16 boxes filled');
+    expect(root.querySelectorAll('.tutorial-boxes > button')).toHaveLength(16);
+    expect(root.querySelector('.question-set-box-slot')).toBeNull();
+    expect(Array.from(root.querySelectorAll('.tutorial-box-target'), button => button.getAttribute('data-question-set-answer')))
+      .toEqual(rack.boxSlots.map(slot => slot.box!.id));
+  });
+
+  it('places unordered samples at A1 and I9 without making unassigned positions answerable', () => {
+    const layout = makeLayout();
+    const box = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!;
+    const firstPosition = box.positions[0]!;
+    const unassignedPosition = box.positions[1]!;
+    box.positions = [
+      { ...firstPosition, id: 'position-i9', label: 'I9', row: 9, column: 9 },
+      unassignedPosition,
+      firstPosition,
+    ];
+    saveLayout(layout);
+    sampleQuestion();
+    toggleUserQuestionSetRack('layout-1-rack-1');
+    toggleUserQuestionSetBox(box.id);
+    const root = view();
+    const grid = element(root, '.tutorial-sample-grid');
+    expect(grid.children).toHaveLength(81);
+    expect(grid.children[0]?.getAttribute('data-question-set-answer')).toBe(firstPosition.id);
+    expect(grid.children[1]?.getAttribute('data-question-set-answer')).toBeNull();
+    expect(grid.children[80]?.getAttribute('data-question-set-answer')).toBe('position-i9');
+    expect(grid.children[80]?.textContent).toBe('I9');
+    expect(grid.querySelectorAll('button')).toHaveLength(2);
+    expect(element(root, '[data-question-set-answer="position-i9"]').getAttribute('aria-label'))
+      .toBe('Select Serum, position I9');
   });
 
   it.each([
