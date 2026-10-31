@@ -9,7 +9,20 @@ The development server uses `.parcel-dev` so production builds in `dist` do not
 overwrite its assets. `npm run build` generates the GitHub Pages build with its
 deployment-specific URL prefix.
 
+Use the **Theme** selector in the page header to choose **Light**, **Dark**, or
+**System** on any screen. Your selection is saved in this browser. **System**
+follows your device/browser color preference and updates when it changes.
+
 User Mode includes a Training Mode picker for saved question sets, with answer
 checking, three-miss reveals, scoring, restart, and changing sets. See
 [Training Mode](docs/training-mode.md) for the rules, shared target resolver, and
 verification commands.
+
+Run unit and integration tests with `npm test -- --run`.
+
+For browser regression tests, install Chromium once with
+`npx playwright install chromium`, then run `npm run test:browser`.
+The runner starts the app automatically and checks the training workflow,
+Ohio State theme, physical freezer grids, saved colors, and page overflow in
+light and dark mode at 360px and 1100px. To use an installed Chrome or Edge
+instead, set `PLAYWRIGHT_CHANNEL` to `chrome` or `msedge`.

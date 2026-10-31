@@ -1,6 +1,6 @@
 import type { QuestionSetQuestion, QuestionSetResult, QuestionTargetType } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import type { FreezerBox, FreezerBoxSlot, FreezerRack } from '../models/freezerLayout.js';
+import type { FreezerBox, FreezerRack } from '../models/freezerLayout.js';
 import { getQuestionSet } from '../services/QuestionSetService.js';
 import { getLayout } from '../services/StorageService.js';
 import { resolveQuestionTarget } from '../services/QuestionTargetService.js';
@@ -298,9 +298,7 @@ function renderRack(layout: SavedLayout, rack: FreezerRack, question: QuestionSe
     const rackExpanded = expandedRackId === rack.id;
     const rackColor = isHexColor(rack.color) ? rack.color : '#FFFFFF';
     const contents = question.targetType !== 'rack' && rackExpanded
-        ? `<div class="tutorial-boxes">${rack.boxSlots.map(slot => slot.box
-            ? renderBox(layout, slot, question)
-            : '').join('')}</div>`
+        ? renderBoxGrid(layout, rack, rackColor, question)
         : '';
 
     return `
@@ -308,28 +306,46 @@ function renderRack(layout: SavedLayout, rack: FreezerRack, question: QuestionSe
             ${question.targetType === 'rack'
                 ? `<button type="button" ${answerAttributes('tutorial-rack-target', rack.id, question)}><span class="tutorial-color-key" aria-hidden="true"></span><span>${escapeHtml(rack.name)}</span></button>`
                 : `<button type="button" class="tutorial-rack-toggle" data-question-set-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${rackExpanded}"><span class="tutorial-color-key" aria-hidden="true"></span><span>${rackExpanded ? '▼' : '▶'} ${escapeHtml(rack.name)}</span></button>`}
+            <p class="question-set-rack-capacity">${rack.boxSlots.filter(slot => slot.box).length} / ${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes filled</p>
             ${contents}
         </li>
     `;
 }
 
-function renderBox(layout: SavedLayout, slot: FreezerBoxSlot, question: QuestionSetQuestion): string {
-    const box = slot.box!;
-    const boxColor = isHexColor(box.color) ? box.color : '#FFFFFF';
+function renderBoxGrid(layout: SavedLayout, rack: FreezerRack, rackColor: string, question: QuestionSetQuestion): string {
+    const slots = new Map(rack.boxSlots.map(slot => [`${slot.row}-${slot.column}`, slot]));
+    let cards = '';
+    for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.rackRows; row++) {
+        for (let column = 1; column <= FREEZER_LAYOUT_LIMITS.rackColumns; column++) {
+            const box = slots.get(`${row}-${column}`)?.box;
+            cards += box
+                ? renderBox(box, rackColor, question)
+                : `<div class="question-set-box-slot" role="img" aria-label="Empty box slot, row ${row}, column ${column}"></div>`;
+        }
+    }
+
+    const expandedBox = rack.boxSlots.find(slot => slot.box?.id === expandedBoxId)?.box;
+    const boxColor = expandedBox && isHexColor(expandedBox.color) ? expandedBox.color : rackColor;
+    const details = question.targetType === 'sample' && expandedBox
+        ? `<section class="question-set-box-details" aria-label="Box positions">
+            <h3>${escapeHtml(expandedBox.name)} — positions</h3>
+            ${renderSamplePositions(layout, expandedBox, boxColor, getReadableTextColor(boxColor), question)}
+        </section>`
+        : '';
+
+    return `<div class="tutorial-boxes">${cards}</div>${details}`;
+}
+
+function renderBox(box: FreezerBox, rackColor: string, question: QuestionSetQuestion): string {
+    const boxColor = isHexColor(box.color) ? box.color : rackColor;
     const boxForeground = getReadableTextColor(boxColor);
     if (question.targetType === 'box') {
         return `<button type="button" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" ${answerAttributes('tutorial-box-target', box.id, question)}>${escapeHtml(box.name)}</button>`;
     }
 
     const boxExpanded = expandedBoxId === box.id;
-    const boxDetails = question.targetType === 'sample' && boxExpanded
-        ? renderSamplePositions(layout, box, boxColor, boxForeground, question)
-        : '';
     return `
-        <div class="tutorial-box${boxExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}">
-            <button type="button" class="tutorial-box-toggle" data-question-set-toggle-box="${escapeHtml(box.id)}" aria-expanded="${boxExpanded}">${boxExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>
-            ${boxDetails}
-        </div>
+        <button type="button" class="tutorial-box-toggle${boxExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-question-set-toggle-box="${escapeHtml(box.id)}" aria-expanded="${boxExpanded}">${boxExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>
     `;
 }
 
