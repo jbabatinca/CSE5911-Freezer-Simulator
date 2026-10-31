@@ -89,18 +89,42 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
 }
 
-.theme-control select {
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+.theme-control .theme-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
   color: var(--text);
   background: var(--surface);
-  font: inherit;
+}
+
+.theme-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-control .theme-button[aria-pressed="true"] {
+  border-color: var(--action);
+  color: #fff;
+  background: var(--action);
+}
+
+.theme-control .theme-button:hover {
+  background: var(--surface-hover);
+}
+
+.theme-control .theme-button[aria-pressed="true"]:hover {
+  border-color: var(--action-hover);
+  background: var(--action-hover);
 }
 
 h1, h2, h3, h4, h5 {

@@ -1,16 +1,15 @@
-type ThemePreference = 'system' | 'light' | 'dark';
+type ThemePreference = 'light' | 'dark';
 
 const STORAGE_KEY = 'freezer-theme';
 
 function isThemePreference(value: string | null): value is ThemePreference {
-    return value === 'system' || value === 'light' || value === 'dark';
+    return value === 'light' || value === 'dark';
 }
 
-/** Apply a saved theme across the app, following system changes in System mode. */
+/** Apply the saved Light/Dark choice, defaulting to Light for new or legacy preferences. */
 export function initializeTheme(): void {
-    const select = document.getElementById('theme-select') as HTMLSelectElement | null;
-    const system = window.matchMedia('(prefers-color-scheme: dark)');
-    let preference: ThemePreference = 'system';
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-value]');
+    let preference: ThemePreference = 'light';
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (isThemePreference(saved)) preference = saved;
@@ -19,22 +18,24 @@ export function initializeTheme(): void {
     }
 
     function applyTheme(): void {
-        document.documentElement.dataset.theme = preference === 'system'
-            ? system.matches ? 'dark' : 'light'
-            : preference;
-        if (select) select.value = preference;
+        document.documentElement.dataset.theme = preference;
+        buttons.forEach(button => {
+            button.setAttribute('aria-pressed', String(button.getAttribute('data-theme-value') === preference));
+        });
     }
 
-    select?.addEventListener('change', () => {
-        if (!isThemePreference(select.value)) return;
-        preference = select.value;
-        applyTheme();
-        try {
-            localStorage.setItem(STORAGE_KEY, preference);
-        } catch {
-            // Keep the selection for this visit even if it cannot be saved.
-        }
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const value = button.getAttribute('data-theme-value');
+            if (!isThemePreference(value)) return;
+            preference = value;
+            applyTheme();
+            try {
+                localStorage.setItem(STORAGE_KEY, preference);
+            } catch {
+                // Keep the selection for this visit even if it cannot be saved.
+            }
+        });
     });
-    system.addEventListener('change', applyTheme);
     applyTheme();
 }

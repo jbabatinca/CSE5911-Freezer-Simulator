@@ -10,6 +10,11 @@ const boxes = (page: Page) => page.locator('.tutorial-boxes');
 const samples = (page: Page) => page.locator('.tutorial-sample-grid');
 const next = (page: Page) => page.locator('#btn-question-set-next').click();
 
+test.beforeEach(async ({ page, colorScheme }) => {
+  // Explicitly select each project theme; the app no longer follows the system.
+  await page.addInitScript(theme => localStorage.setItem('freezer-theme', theme), colorScheme ?? 'light');
+});
+
 async function openSet(page: Page, legacy: boolean, sampleOnly = false): Promise<void> {
   const layout = makeLayout();
   for (const [index, rack] of layout.freezerData.shelves[0]!.racks.entries()) {
@@ -167,7 +172,7 @@ test('switching theme during training preserves expanded boxes and answer progre
   await page.locator(`[data-question-set-toggle-rack="${rackId}"]`).click();
   await page.locator(`[data-question-set-toggle-box="${boxId}"]`).click();
   for (const theme of ['dark', 'light']) {
-    await page.locator('#theme-select').selectOption(theme);
+    await page.locator(`[data-theme-value="${theme}"]`).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(page.locator('.question-set-run-view')).toHaveCSS('background-color', theme === 'dark' ? 'rgb(33, 35, 37)' : 'rgb(255, 255, 255)');
     await expectGrid(boxes(page), 4, 4);
@@ -176,7 +181,7 @@ test('switching theme during training preserves expanded boxes and answer progre
     await expectNoPageOverflow(page);
   }
   await answer(page, positionId).click();
-  await page.locator('#theme-select').selectOption('dark');
+  await page.getByRole('button', { name: 'Switch to Dark Mode' }).click();
   await expect(page.locator('#question-set-feedback')).toContainText('Correct!');
   await expect(page.locator('.question-set-score')).toHaveText('Score: 1 / 1 · Misses: 0 / 3');
   await expect(answer(page, positionId)).toBeDisabled();

@@ -9,14 +9,24 @@ The development server uses `.parcel-dev` so production builds in `dist` do not
 overwrite its assets. `npm run build` generates the GitHub Pages build with its
 deployment-specific URL prefix.
 
-Use the **Theme** selector in the page header to choose **Light**, **Dark**, or
-**System** on any screen. Your selection is saved in this browser. **System**
-follows your device/browser color preference and updates when it changes.
-
 User Mode includes a Training Mode picker for saved question sets, with answer
 checking, three-miss reveals, scoring, restart, and changing sets. See
 [Training Mode](docs/training-mode.md) for the rules, shared target resolver, and
 verification commands.
+
+## Application themes
+
+- Use the **sun** icon in the application header to switch to **Light Mode**.
+- Use the **moon** icon to switch to **Dark Mode**.
+- The active theme's icon is highlighted.
+- Your selected preference is saved in browser storage and restored after reloading.
+- Light Mode is the default for new visits and older System preferences.
+- System Mode is not available; device/browser theme changes do not change your selection.
+- Theme switching still works when browser storage is unavailable, but the preference cannot be saved.
+- Themes apply across home screens, navigation, dialogs, forms, freezer layouts, question sets, and training results.
+- Switching themes during training preserves progress and keeps expanded racks and boxes open.
+
+## Testing
 
 Run unit and integration tests with `npm test -- --run`.
 
