@@ -1808,13 +1808,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .question-set-run-view .tutorial-racks {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 6px;
 }
 
 /* Match the editor's rack cards and leave the expanded rack room for its grid. */
 .question-set-run-view .tutorial-rack {
-  flex: 1 1 130px;
+  flex: 1 0 130px;
   max-width: 100%;
   min-height: 120px;
   padding: 12px;
@@ -1824,7 +1826,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .question-set-run-view .tutorial-rack.is-expanded {
-  flex: 0 1 380px;
+  flex: 0 0 380px;
 }
 
 .question-set-run-view .tutorial-rack-toggle,
@@ -1918,7 +1920,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   .question-set-run-view .tutorial-rack,
   .question-set-run-view .tutorial-rack.is-expanded {
-    flex-basis: 100%;
     padding: 8px;
   }
 
