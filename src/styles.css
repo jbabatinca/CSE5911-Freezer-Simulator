@@ -1176,7 +1176,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .tutorial-rack {
   min-width: 0;
   padding: 10px;
-  border: 2px solid var(--tutorial-rack-color);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--tutorial-rack-color);
   border-radius: 8px;
   background: color-mix(in srgb, var(--tutorial-rack-color) 8%, var(--surface));
 }
@@ -1223,28 +1224,40 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .tutorial-boxes {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
 
 .tutorial-box {
   min-width: 0;
-  padding: 6px;
-  border: 2px solid var(--tutorial-box-color);
+  min-height: 60px;
+  border: 2px solid var(--border);
   border-radius: 7px;
-  background: color-mix(in srgb, var(--tutorial-box-color) 10%, var(--surface));
+  border-top: 4px solid var(--tutorial-box-color);
+  background: color-mix(in srgb, var(--tutorial-box-color) 12%, var(--surface));
+}
+
+.tutorial-box-slot {
+  min-width: 0;
+  min-height: 60px;
+  border: 2px dashed var(--border);
+  border-radius: 7px;
+  background: var(--surface);
 }
 
 .tutorial-box-toggle,
 .tutorial-box-target {
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
   width: 100%;
-  min-height: 40px;
-  padding: 7px;
-  border-color: var(--tutorial-box-color);
-  border-radius: 5px;
+  min-height: 56px;
+  padding: 6px;
+  border: 0;
+  border-radius: 4px;
   color: var(--text);
-  background: var(--surface);
+  background: transparent;
   text-align: left;
 }
 
@@ -1261,6 +1274,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   width: 100%;
   gap: 2px;
   margin-top: 8px;
+}
+
+.tutorial-box-details {
+  min-width: 0;
+  margin-top: 16px;
+}
+
+.tutorial-box-details h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
 }
 
 .tutorial-sample-empty,
@@ -1501,7 +1524,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   .tutorial-boxes {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .tutorial-box-slot,
+  .tutorial-box {
+    min-height: 48px;
+  }
+
+  .tutorial-box-toggle,
+  .tutorial-box-target {
+    min-height: 44px;
+    padding: 4px;
+    font-size: 11px;
   }
 
   .tutorial-sample-grid {
@@ -1812,25 +1848,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-width: 0;
 }
 
-.question-set-run-view .tutorial-freezer {
+.physical-freezer-layout .tutorial-freezer {
   display: grid;
   gap: 12px;
   border-color: var(--freezer-frame);
   background: var(--freezer-interior);
 }
 
-.question-set-run-view .tutorial-shelf {
+.physical-freezer-layout .tutorial-shelf {
   min-width: 0;
   border-color: var(--border);
   border-bottom-color: var(--freezer-shelf-edge);
   background: var(--surface);
 }
 
-.question-set-run-view .tutorial-shelf-header {
+.physical-freezer-layout .tutorial-shelf-header {
   flex-wrap: wrap;
 }
 
-.question-set-run-view .tutorial-racks {
+.physical-freezer-layout .tutorial-racks {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
@@ -1839,7 +1875,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Match the editor's rack cards and leave the expanded rack room for its grid. */
-.question-set-run-view .tutorial-rack {
+.physical-freezer-layout .tutorial-rack {
   flex: 1 0 130px;
   max-width: 100%;
   min-height: 120px;
@@ -1849,41 +1885,41 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: color-mix(in srgb, var(--tutorial-rack-color) 8%, var(--surface));
 }
 
-.question-set-run-view .tutorial-rack.is-expanded {
+.physical-freezer-layout .tutorial-rack.is-expanded {
   flex: 0 0 380px;
 }
 
-.question-set-run-view .tutorial-rack-toggle,
-.question-set-run-view .tutorial-rack-target {
+.physical-freezer-layout .tutorial-rack-toggle,
+.physical-freezer-layout .tutorial-rack-target {
   border-color: var(--border);
   color: var(--text);
   background: transparent;
   overflow-wrap: anywhere;
 }
 
-.question-set-run-view .question-set-rack-capacity {
+.physical-freezer-layout .question-set-rack-capacity {
   margin: 8px 0 0;
   font-size: 14px;
 }
 
-.question-set-run-view .tutorial-boxes {
+.physical-freezer-layout .tutorial-boxes {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
 
-.question-set-run-view .tutorial-box-toggle,
-.question-set-run-view .tutorial-box-target,
-.question-set-run-view .question-set-box-slot {
+.physical-freezer-layout .tutorial-box-toggle,
+.physical-freezer-layout .tutorial-box-target,
+.physical-freezer-layout .question-set-box-slot {
   min-width: 0;
   min-height: 60px;
   border: 2px solid var(--border);
   border-radius: 6px;
 }
 
-.question-set-run-view .tutorial-box-toggle,
-.question-set-run-view .tutorial-box-target {
+.physical-freezer-layout .tutorial-box-toggle,
+.physical-freezer-layout .tutorial-box-target {
   padding: 8px;
   border-top: 4px solid var(--tutorial-box-color);
   background: color-mix(in srgb, var(--tutorial-box-color) 12%, var(--surface));
@@ -1892,67 +1928,67 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   overflow-wrap: anywhere;
 }
 
-.question-set-run-view .tutorial-box-toggle.is-expanded {
+.physical-freezer-layout .tutorial-box-toggle.is-expanded {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
-.question-set-run-view .question-set-box-slot {
+.physical-freezer-layout .question-set-box-slot {
   border-style: dashed;
   background: var(--surface);
 }
 
-.question-set-run-view .question-set-box-details {
+.physical-freezer-layout .question-set-box-details {
   margin-top: 16px;
 }
 
-.question-set-run-view .question-set-box-details h3 {
+.physical-freezer-layout .question-set-box-details h3 {
   margin: 0 0 8px;
   font-size: 14px;
 }
 
-.question-set-run-view .tutorial-sample-grid {
+.physical-freezer-layout .tutorial-sample-grid {
   grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 2px;
 }
 
-.question-set-run-view .tutorial-sample-empty,
-.question-set-run-view .tutorial-sample-target {
+.physical-freezer-layout .tutorial-sample-empty,
+.physical-freezer-layout .tutorial-sample-target {
   border-color: var(--border);
   font-size: 10px;
 }
 
-.question-set-run-view .tutorial-sample-empty {
+.physical-freezer-layout .tutorial-sample-empty {
   background: var(--surface);
 }
 
-.question-set-run-view .tutorial-sample-target {
+.physical-freezer-layout .tutorial-sample-target {
   border-color: var(--tutorial-box-color);
   background: var(--tutorial-box-color);
   color: var(--tutorial-box-foreground);
 }
 
-.question-set-run-view .tutorial-sample-target:hover {
+.physical-freezer-layout .tutorial-sample-target:hover {
   filter: brightness(0.96);
 }
 
 @media (max-width: 600px) {
-  .question-set-run-view .tutorial-freezer,
-  .question-set-run-view .tutorial-shelf {
+  .physical-freezer-layout .tutorial-freezer,
+  .physical-freezer-layout .tutorial-shelf {
     padding: 8px;
   }
 
-  .question-set-run-view .tutorial-rack,
-  .question-set-run-view .tutorial-rack.is-expanded {
+  .physical-freezer-layout .tutorial-rack,
+  .physical-freezer-layout .tutorial-rack.is-expanded {
     padding: 8px;
   }
 
-  .question-set-run-view .tutorial-boxes {
+  .physical-freezer-layout .tutorial-boxes {
     gap: 4px;
   }
 
-  .question-set-run-view .tutorial-box-toggle,
-  .question-set-run-view .tutorial-box-target {
+  .physical-freezer-layout .tutorial-box-toggle,
+  .physical-freezer-layout .tutorial-box-target {
     padding: 4px;
   }
 }

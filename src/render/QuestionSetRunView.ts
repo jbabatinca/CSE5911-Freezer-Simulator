@@ -213,7 +213,7 @@ export function renderUserQuestionSetView(questionSetId: string): string {
 
     const remainingMs = getQuestionSetRemainingMs();
     return `
-        <section class="training-view tutorial-training user-question-set-view question-set-run-view">
+        <section class="training-view tutorial-training user-question-set-view question-set-run-view physical-freezer-layout">
             <header class="training-heading training-active-heading">
                 <div>
                     <p class="training-eyebrow">CUSTOM TRAINING SET</p>
