@@ -1,13 +1,50 @@
 :root {
   color-scheme: light;
-  --primary: #2459a9;
-  --primary-dark: #19417f;
+  --primary: #ba0c2f;
+  --primary-dark: #70071c;
   --teal: #11776e;
-  --text: #21334b;
-  --muted: #5b6c82;
-  --border: #d5e0ed;
+  --text: #212325;
+  --muted: #646a6e;
+  --border: #cfd4d8;
   --surface: #fff;
   --danger: #b02e40;
+  --page: #eff1f2;
+  --surface-raised: #f6f7f8;
+  --surface-muted: #eff1f2;
+  --surface-hover: #dfe3e5;
+  --action: #ba0c2f;
+  --action-hover: #70071c;
+  --success-background: #e2f4f0;
+  --success-text: #155f58;
+  --danger-background: #fbecef;
+  --freezer-frame: #646a6e;
+  --freezer-interior: #dfe3e5;
+  --freezer-shelf-edge: #a7b1b7;
+  --training-panel: #f6f7f8;
+  --training-complete: #eff1f2;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #fff;
+  --text: #f6f7f8;
+  --muted: #bfc6cb;
+  --border: #646a6e;
+  --surface: #212325;
+  --danger: #ffb4ab;
+  --teal: #8ed4c6;
+  --page: #161819;
+  --surface-raised: #2e3133;
+  --surface-muted: #3f4443;
+  --surface-hover: #464b4e;
+  --success-background: #203d35;
+  --success-text: #9ce0c6;
+  --danger-background: #4b252c;
+  --freezer-frame: #a7b1b7;
+  --freezer-interior: #161819;
+  --freezer-shelf-edge: #868e92;
+  --training-panel: #2e3133;
+  --training-complete: #3f4443;
 }
 
 * {
@@ -19,24 +56,75 @@ body {
   min-height: 100vh;
   padding: 32px 24px;
   color: var(--text);
-  background: #f1f5fa;
-  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--page);
+  font-family: "BuckeyeSans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   line-height: 1.5;
 }
 
-body > h1,
+.app-header,
 #app {
   max-width: 1100px;
   margin-inline: auto;
 }
 
-body > h1 {
-  margin-top: 0;
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
+}
+
+.app-header h1 {
+  margin-top: 0;
+  margin-bottom: 0;
   padding-left: 14px;
-  border-left: 4px solid var(--teal);
+  border-left: 6px solid #ba0c2f;
   font-size: 22px;
   letter-spacing: -0.5px;
+}
+
+.theme-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-control .theme-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.theme-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-control .theme-button[aria-pressed="true"] {
+  border-color: var(--action);
+  color: #fff;
+  background: var(--action);
+}
+
+.theme-control .theme-button:hover {
+  background: var(--surface-hover);
+}
+
+.theme-control .theme-button[aria-pressed="true"]:hover {
+  border-color: var(--action-hover);
+  background: var(--action-hover);
 }
 
 h1, h2, h3, h4, h5 {
@@ -59,7 +147,7 @@ button, input {
 button {
   padding: 10px 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 3px;
   color: var(--primary);
   background: var(--surface);
   font-weight: 600;
@@ -68,11 +156,11 @@ button {
 }
 
 button:hover {
-  border-color: #8aa9ce;
-  background: #edf4ff;
+  border-color: #646a6e;
+  background: var(--surface-muted);
 }
 
-button:focus-visible, input:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 3px;
 }
@@ -80,16 +168,16 @@ button:focus-visible, input:focus-visible {
 .home-view, .mode-home-view, .training-view, .layout-dashboard, .freezer-editor {
   padding: 32px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
   background: var(--surface);
   box-shadow: 0 8px 28px rgb(33 51 75 / 5%);
 }
 
 .home-view {
   padding: 72px 32px;
-  border-top: 5px solid var(--primary);
+  border-top: 5px solid var(--action);
   text-align: center;
-  background: linear-gradient(135deg, #fff, #eef7fc);
+  background: linear-gradient(135deg, var(--surface), var(--surface-raised));
 }
 
 .home-view h1 {
@@ -123,26 +211,26 @@ button:focus-visible, input:focus-visible {
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new) {
-  border-color: var(--primary);
+  border-color: var(--action);
   color: #fff;
-  background: var(--primary);
+  background: var(--action);
 }
 
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new):hover {
-  border-color: var(--primary-dark);
-  background: var(--primary-dark);
+  border-color: var(--action-hover);
+  background: var(--action-hover);
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training) {
   border-color: var(--teal);
   color: var(--teal);
-  background: #edf9f6;
+  background: var(--success-background);
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training):hover {
-  background: #d9f0eb;
+  background: var(--success-background);
 }
 
 .navigation {
@@ -168,18 +256,18 @@ button:focus-visible, input:focus-visible {
 
 .layout-slot {
   border-top: 4px solid var(--primary);
-  background: #f0f5fc;
+  background: var(--surface-raised);
 }
 
 .new-layout-btn, .plus-btn {
-  border: 2px dashed #a8c5ce;
+  border: 2px dashed var(--border);
   color: var(--teal);
-  background: #f3faf8;
+  background: var(--success-background);
 }
 
 .new-layout-btn:hover, .plus-btn:hover {
   border-color: var(--teal);
-  background: #e3f3ef;
+  background: var(--success-background);
 }
 
 .plus-btn {
@@ -221,7 +309,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  background: #f8fafd;
+  background: var(--surface-raised);
 }
 
 #btn-close-modal, #btn-cancel-admin, #btn-close-settings {
@@ -229,14 +317,14 @@ button:focus-visible, input:focus-visible {
 }
 
 .btn-delete, .btn-remove, .btn-remove-box, .btn-remove-sample {
-  border-color: #ecc8ce;
+  border-color: var(--border);
   color: var(--danger);
-  background: #fff5f6;
+  background: var(--danger-background);
 }
 
 .btn-delete:hover, .btn-remove:hover, .btn-remove-box:hover, .btn-remove-sample:hover {
   border-color: var(--danger);
-  background: #fce6e9;
+  background: var(--danger-background);
 }
 
 .btn-remove {
@@ -246,7 +334,7 @@ button:focus-visible, input:focus-visible {
 
 .btn-add {
   color: var(--teal);
-  background: #edf9f6;
+  background: var(--success-background);
 }
 
 .shelf > .btn-add {
@@ -266,16 +354,16 @@ button:focus-visible, input:focus-visible {
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  border: 2px solid #b7c9dd;
+  border: 2px solid var(--border);
   border-radius: 12px;
-  background: #eaf0f7;
+  background: var(--freezer-interior);
 }
 
 .shelf {
   min-width: 0;
   padding: 12px;
   border: 1px solid var(--border);
-  border-bottom: 5px solid #9eb6d0;
+  border-bottom: 5px solid var(--freezer-shelf-edge);
   border-radius: 8px;
   background: var(--surface);
 }
@@ -301,9 +389,9 @@ button:focus-visible, input:focus-visible {
   justify-content: center;
   min-height: 120px;
   padding: 12px;
-  border: 1px solid #bfd0e3;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f5f8fc;
+  background: var(--surface-raised);
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -369,7 +457,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  background: #f8fafd;
+  background: var(--surface-raised);
   font-weight: 600;
 }
 
@@ -409,14 +497,14 @@ button:focus-visible, input:focus-visible {
 .freezer-editor .box-slot {
   min-width: 0;
   min-height: 60px;
-  border: 2px solid #79b4ab;
+  border: 2px solid var(--teal);
   border-radius: 6px;
-  background: #f2faf8;
+  background: var(--success-background);
 }
 
 .freezer-editor .box-selected {
   border-color: var(--teal);
-  background: #d9f0eb;
+  background: var(--success-background);
 }
 
 .freezer-editor .box-toggle {
@@ -434,7 +522,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .freezer-editor .box-toggle:hover {
-  background: #d9f0eb;
+  background: var(--success-background);
 }
 
 /* Leave room for the remove button added by the admin editor. */
@@ -455,8 +543,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .freezer-editor .box-slot.empty {
-  border: 2px dashed #a7b9cd;
-  background: #fff;
+  border: 2px dashed var(--border);
+  background: var(--surface);
 }
 
 .freezer-editor .box-slot .btn-add,
@@ -473,7 +561,7 @@ button:focus-visible, input:focus-visible {
 .freezer-editor .box-slot .btn-add:hover,
 .freezer-editor .box-position .btn-add:hover {
   color: var(--teal);
-  background: #d9f0eb;
+  background: var(--success-background);
 }
 
 .freezer-editor .box-slot .btn-add {
@@ -504,7 +592,7 @@ button:focus-visible, input:focus-visible {
   height: 30px;
   border: 1px solid var(--border);
   border-radius: 2px;
-  background: #fff;
+  background: var(--surface);
   font-size: 10px;
 }
 
@@ -534,7 +622,7 @@ button:focus-visible, input:focus-visible {
   padding: 20px;
   border: 1px solid #777;
   border-top: 4px solid #36796b;
-  color: #222;
+  color: var(--text);
 }
 
 .name-entry-dialog::backdrop {
@@ -574,8 +662,8 @@ button:focus-visible, input:focus-visible {
 
 .name-entry-actions .btn-cancel {
   border: 1px solid #999;
-  background: #fff;
-  color: #333;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .training-view {
@@ -629,7 +717,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--border);
   border-left: 4px solid var(--primary);
   border-radius: 8px;
-  background: #f0f5fc;
+  background: var(--surface-raised);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -638,7 +726,7 @@ button:focus-visible, input:focus-visible {
 .training-layout:hover,
 .training-layout:focus-visible {
   border-color: var(--primary);
-  background: #e8f0fb;
+  background: var(--surface-hover);
 }
 
 .training-layout-name {
@@ -657,7 +745,7 @@ button:focus-visible, input:focus-visible {
   padding: 18px;
   border-left: 4px solid var(--teal);
   border-radius: 8px;
-  background: #f0f7f6;
+  background: var(--success-background);
   color: var(--text);
   line-height: 1.5;
 }
@@ -682,7 +770,7 @@ button:focus-visible, input:focus-visible {
   padding: 10px 14px !important;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f0f5fc;
+  background: var(--surface-raised);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -694,7 +782,7 @@ button:focus-visible, input:focus-visible {
 
 .training-score span {
   padding: 0 4px;
-  color: #8c9bad;
+  color: var(--muted);
 }
 
 .training-question {
@@ -703,7 +791,7 @@ button:focus-visible, input:focus-visible {
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-raised);
 }
 
 .training-prompt {
@@ -739,7 +827,7 @@ button:focus-visible, input:focus-visible {
 .training-option:hover:not(:disabled),
 .training-option:focus-visible {
   border-color: var(--primary);
-  background: #edf4ff;
+  background: var(--surface-hover);
 }
 
 .training-option:disabled {
@@ -748,13 +836,13 @@ button:focus-visible, input:focus-visible {
 
 .training-option.is-correct {
   border-color: var(--teal);
-  background: #e2f4f0;
-  color: #155f58;
+  background: var(--success-background);
+  color: var(--success-text);
 }
 
 .training-option.is-incorrect {
   border-color: var(--danger);
-  background: #fbecef;
+  background: var(--danger-background);
   color: var(--danger);
 }
 
@@ -806,7 +894,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--border);
   border-left: 4px solid var(--teal);
   border-radius: 8px;
-  background: #f0f5fa;
+  background: var(--surface-raised);
 }
 
 .training-editor .training-question h2 {
@@ -862,7 +950,7 @@ button:focus-visible, input:focus-visible {
 }
 
 .training-editor .training-box-toggle:hover {
-  background: #edf4ff;
+  background: var(--surface-hover);
 }
 
 .training-editor .training-specimen-target:disabled {
@@ -871,13 +959,13 @@ button:focus-visible, input:focus-visible {
 
 .training-editor .training-specimen-target.is-correct {
   border-color: var(--teal);
-  background: #e2f4f0;
-  color: #155f58;
+  background: var(--success-background);
+  color: var(--success-text);
 }
 
 .training-editor .training-specimen-target.is-incorrect {
   border-color: var(--danger);
-  background: #fbecef;
+  background: var(--danger-background);
   color: var(--danger);
 }
 
@@ -886,7 +974,7 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   justify-content: center;
   min-height: 60px;
-  border: 2px dashed #a8c5ce;
+  border: 2px dashed var(--border);
   color: var(--muted);
   font-size: 12px;
 }
@@ -913,12 +1001,12 @@ button:focus-visible, input:focus-visible {
 
 .training-editor .training-specimen-target:hover:not(:disabled) {
   border-color: var(--primary);
-  background: var(--primary);
+  background: var(--action);
 }
 
 .training-editor .training-unassigned-position {
   border-color: var(--border);
-  background: #f1f5fa;
+  background: var(--surface-muted);
   color: var(--muted);
 }
 
@@ -939,8 +1027,8 @@ button:focus-visible, input:focus-visible {
 #btn-freezer-layouts:disabled,
 #btn-freezer-layouts:disabled:hover {
   border-color: var(--border);
-  background: #e8edf4;
-  color: #718096;
+  background: var(--surface-muted);
+  color: var(--muted);
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -973,7 +1061,7 @@ button:focus-visible, input:focus-visible {
   min-width: 0;
   padding: 0;
   border: 0;
-  background: var(--primary);
+  background: var(--action);
   color: #fff;
   cursor: pointer;
   font-size: 10px;
@@ -985,7 +1073,7 @@ button:focus-visible, input:focus-visible {
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f0f5fc;
+  background: var(--surface-raised);
   color: var(--muted);
 }
 
@@ -1009,7 +1097,7 @@ button:focus-visible, input:focus-visible {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f5f7fa;
+  background: var(--surface-raised);
   color: var(--muted);
   font-size: 13px;
 }
@@ -1021,7 +1109,7 @@ button:focus-visible, input:focus-visible {
 
 .tutorial-level.is-current {
   border-color: var(--primary);
-  background: #e8f0fb;
+  background: var(--surface-hover);
   color: var(--text);
 }
 
@@ -1030,9 +1118,9 @@ button:focus-visible, input:focus-visible {
 }
 
 .tutorial-level.is-complete {
-  border-color: #9bc9c0;
-  background: #edf8f5;
-  color: #426b65;
+  border-color: var(--teal);
+  background: var(--success-background);
+  color: var(--success-text);
 }
 
 .tutorial-level.is-complete strong {
@@ -1045,17 +1133,17 @@ button:focus-visible, input:focus-visible {
 
 .tutorial-freezer {
   padding: 12px;
-  border: 4px solid #60758d;
+  border: 4px solid var(--freezer-frame);
   border-radius: 10px;
-  background: #e7edf4;
+  background: var(--freezer-interior);
 }
 
 .tutorial-shelf {
   padding: 14px;
-  border: 1px solid #aebdce;
-  border-bottom: 6px solid #8599ae;
+  border: 1px solid var(--border);
+  border-bottom: 6px solid var(--freezer-shelf-edge);
   border-radius: 6px 6px 2px 2px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .tutorial-shelf-header {
@@ -1090,7 +1178,7 @@ button:focus-visible, input:focus-visible {
   padding: 10px;
   border: 2px solid var(--tutorial-rack-color);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--tutorial-rack-color) 8%, white);
+  background: color-mix(in srgb, var(--tutorial-rack-color) 8%, var(--surface));
 }
 
 .tutorial-rack-toggle,
@@ -1104,7 +1192,7 @@ button:focus-visible, input:focus-visible {
   border-color: var(--tutorial-rack-color);
   border-radius: 6px;
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
   text-align: left;
 }
 
@@ -1112,15 +1200,15 @@ button:focus-visible, input:focus-visible {
 .tutorial-box-target.is-correct,
 .tutorial-sample-target.is-correct {
   border-color: var(--teal);
-  background: #e2f4f0;
-  color: #155f58;
+  background: var(--success-background);
+  color: var(--success-text);
 }
 
 .tutorial-rack-target.is-incorrect,
 .tutorial-box-target.is-incorrect,
 .tutorial-sample-target.is-incorrect {
   border-color: var(--danger);
-  background: #fbecef;
+  background: var(--danger-background);
   color: var(--danger);
 }
 
@@ -1145,7 +1233,7 @@ button:focus-visible, input:focus-visible {
   padding: 6px;
   border: 2px solid var(--tutorial-box-color);
   border-radius: 7px;
-  background: color-mix(in srgb, var(--tutorial-box-color) 10%, white);
+  background: color-mix(in srgb, var(--tutorial-box-color) 10%, var(--surface));
 }
 
 .tutorial-box-toggle,
@@ -1156,7 +1244,7 @@ button:focus-visible, input:focus-visible {
   border-color: var(--tutorial-box-color);
   border-radius: 5px;
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
   text-align: left;
 }
 
@@ -1183,7 +1271,7 @@ button:focus-visible, input:focus-visible {
   aspect-ratio: 1;
   min-width: 0;
   padding: 0;
-  border: 1px solid #d5e0ed;
+  border: 1px solid var(--border);
   border-radius: 2px;
   font-size: 9px;
 }
@@ -1197,15 +1285,15 @@ button:focus-visible, input:focus-visible {
 
 .tutorial-sample-target:hover {
   border-color: var(--primary);
-  background: var(--primary);
+  background: var(--action);
 }
 
 .tutorial-completion {
   margin-top: 20px;
   padding: 18px;
-  border: 1px solid #9bc9c0;
+  border: 1px solid var(--teal);
   border-radius: 8px;
-  background: #edf8f5;
+  background: var(--success-background);
 }
 
 .tutorial-completion .btn-save {
@@ -1240,7 +1328,7 @@ button:focus-visible, input:focus-visible {
   padding: 10px 18px;
   border: 2px solid var(--primary);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   color: var(--muted);
   font-weight: 700;
 }
@@ -1253,12 +1341,12 @@ button:focus-visible, input:focus-visible {
 }
 
 .question-set-timer.is-low {
-  border-color: #b42318;
-  background: #fef3f2;
+  border-color: var(--danger);
+  background: var(--danger-background);
 }
 
 .question-set-timer.is-low strong {
-  color: #b42318;
+  color: var(--danger);
 }
 
 .question-set-time {
@@ -1289,14 +1377,14 @@ button:focus-visible, input:focus-visible {
 .question-set-run-view [data-question-set-answer].is-correct,
 .question-set-run-view [data-question-set-answer].is-correct:hover {
   border-color: var(--teal);
-  background: #e2f4f0;
-  color: #155f58;
+  background: var(--success-background);
+  color: var(--success-text);
 }
 
 .question-set-run-view [data-question-set-answer].is-incorrect,
 .question-set-run-view [data-question-set-answer].is-incorrect:hover {
   border-color: var(--danger);
-  background: #fbecef;
+  background: var(--danger-background);
   color: var(--danger);
 }
 
@@ -1312,9 +1400,9 @@ button:focus-visible, input:focus-visible {
 }
 
 .rack.color-coded {
-  border-color: #a8b5c5;
+  border-color: var(--border);
   border-left: 6px solid var(--item-color);
-  background: color-mix(in srgb, var(--item-color) 8%, white);
+  background: color-mix(in srgb, var(--item-color) 8%, var(--surface));
 }
 
 .layout-color-trigger {
@@ -1384,13 +1472,13 @@ button:focus-visible, input:focus-visible {
 }
 
 .freezer-editor .box-container.color-coded {
-  border-color: #a8b5c5;
+  border-color: var(--border);
   border-top: 4px solid var(--item-color);
-  background: color-mix(in srgb, var(--item-color) 12%, white);
+  background: color-mix(in srgb, var(--item-color) 12%, var(--surface));
 }
 
 .freezer-editor .box-container.color-coded .box-toggle {
-  color: var(--item-foreground);
+  color: var(--text);
 }
 
 .box-color-trigger {
@@ -1427,7 +1515,7 @@ button:focus-visible, input:focus-visible {
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-raised);
   text-align: left;
 }
 
@@ -1469,8 +1557,8 @@ button:focus-visible, input:focus-visible {
 .user-question-set-controls button:disabled,
 .question-set-editor button:disabled {
   border-color: var(--border);
-  background: #e8edf4;
-  color: #718096;
+  background: var(--surface-muted);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
@@ -1587,7 +1675,7 @@ button:focus-visible, input:focus-visible {
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--surface-raised);
 }
 
 .question-set-question-header {
@@ -1612,7 +1700,7 @@ button:focus-visible, input:focus-visible {
 
 .question-set-question-toggle:hover {
   border-color: transparent;
-  background: #edf4ff;
+  background: var(--surface-hover);
 }
 
 .question-set-question-toggle > span:first-child {
@@ -1651,7 +1739,7 @@ button:focus-visible, input:focus-visible {
 .question-set-empty {
   margin: 16px 0;
   padding: 16px;
-  border: 1px dashed #a8b5c5;
+  border: 1px dashed var(--border);
   border-radius: 8px;
   color: var(--muted);
 }
@@ -1659,7 +1747,7 @@ button:focus-visible, input:focus-visible {
 .question-set-error {
   padding: 10px 12px;
   border-left: 3px solid var(--danger);
-  background: #fbecef;
+  background: var(--danger-background);
   color: var(--danger);
 }
 
@@ -1715,108 +1803,257 @@ button:focus-visible, input:focus-visible {
   }
 }
 
-.question-set-run-view .freezer {
-  margin-top: 14px;
-}
-
-.question-set-run-view .racks {
-  align-items: stretch;
-}
-
-.question-set-run-view .rack {
-  min-width: 240px;
-  text-align: left;
-}
-
-.question-set-run-view .rack h4 {
-  margin: 0;
-}
-
-.question-set-layout-target {
-  width: 100%;
-  min-height: 48px;
-  padding: 10px 12px;
-  border-color: var(--teal);
-  background: #edf9f6;
-  color: var(--text);
-  text-align: left;
-}
-
-.question-set-layout-target:hover {
-  border-color: var(--primary);
-  background: #edf4ff;
-}
-
-.question-set-run-view .rack-grid {
-  overflow: visible;
-}
-
-.question-set-run-view .box-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(48px, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.question-set-run-view .box-container,
-.question-set-run-view .box-slot {
+.question-set-run-view {
   min-width: 0;
-  min-height: 48px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.question-set-run-view .box-toggle {
-  width: 100%;
-  min-height: 46px;
-  padding: 8px;
-  border: 0;
-  background: transparent;
-  text-align: left;
   overflow-wrap: anywhere;
 }
 
-.question-set-run-view .box-details {
+.question-set-run-view .training-heading > div {
+  min-width: 0;
+}
+
+.question-set-run-view .tutorial-freezer {
+  display: grid;
+  gap: 12px;
+  border-color: var(--freezer-frame);
+  background: var(--freezer-interior);
+}
+
+.question-set-run-view .tutorial-shelf {
+  min-width: 0;
+  border-color: var(--border);
+  border-bottom-color: var(--freezer-shelf-edge);
+  background: var(--surface);
+}
+
+.question-set-run-view .tutorial-shelf-header {
+  flex-wrap: wrap;
+}
+
+.question-set-run-view .tutorial-racks {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+/* Match the editor's rack cards and leave the expanded rack room for its grid. */
+.question-set-run-view .tutorial-rack {
+  flex: 1 0 130px;
+  max-width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--tutorial-rack-color);
+  background: color-mix(in srgb, var(--tutorial-rack-color) 8%, var(--surface));
+}
+
+.question-set-run-view .tutorial-rack.is-expanded {
+  flex: 0 0 380px;
+}
+
+.question-set-run-view .tutorial-rack-toggle,
+.question-set-run-view .tutorial-rack-target {
+  border-color: var(--border);
+  color: var(--text);
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+
+.question-set-run-view .question-set-rack-capacity {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.question-set-run-view .tutorial-boxes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin-top: 12px;
 }
 
-.question-set-run-view .box-positions-grid {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(24px, 1fr));
+.question-set-run-view .tutorial-box-toggle,
+.question-set-run-view .tutorial-box-target,
+.question-set-run-view .question-set-box-slot {
+  min-width: 0;
+  min-height: 60px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+}
+
+.question-set-run-view .tutorial-box-toggle,
+.question-set-run-view .tutorial-box-target {
+  padding: 8px;
+  border-top: 4px solid var(--tutorial-box-color);
+  background: color-mix(in srgb, var(--tutorial-box-color) 12%, var(--surface));
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.question-set-run-view .tutorial-box-toggle.is-expanded {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.question-set-run-view .question-set-box-slot {
+  border-style: dashed;
+  background: var(--surface);
+}
+
+.question-set-run-view .question-set-box-details {
+  margin-top: 16px;
+}
+
+.question-set-run-view .question-set-box-details h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.question-set-run-view .tutorial-sample-grid {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 2px;
 }
 
-.question-set-run-view .box-position {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: 28px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface);
+.question-set-run-view .tutorial-sample-empty,
+.question-set-run-view .tutorial-sample-target {
+  border-color: var(--border);
   font-size: 10px;
 }
 
-.question-set-run-view .question-set-layout-target.position-filled {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
-  cursor: pointer;
+.question-set-run-view .tutorial-sample-empty {
+  background: var(--surface);
 }
 
-.question-set-run-view .question-set-layout-target.position-filled:hover {
-  filter: brightness(0.9);
+.question-set-run-view .tutorial-sample-target {
+  border-color: var(--tutorial-box-color);
+  background: var(--tutorial-box-color);
+  color: var(--tutorial-box-foreground);
+}
+
+.question-set-run-view .tutorial-sample-target:hover {
+  filter: brightness(0.96);
 }
 
 @media (max-width: 600px) {
-  .question-set-run-view .box-grid {
-    grid-template-columns: repeat(4, minmax(44px, 1fr));
+  .question-set-run-view .tutorial-freezer,
+  .question-set-run-view .tutorial-shelf {
+    padding: 8px;
   }
 
-  .question-set-run-view .box-positions-grid {
-    grid-template-columns: repeat(9, minmax(20px, 1fr));
+  .question-set-run-view .tutorial-rack,
+  .question-set-run-view .tutorial-rack.is-expanded {
+    padding: 8px;
   }
+
+  .question-set-run-view .tutorial-boxes {
+    gap: 4px;
+  }
+
+  .question-set-run-view .tutorial-box-toggle,
+  .question-set-run-view .tutorial-box-target {
+    padding: 4px;
+  }
+}
+
+/* Ohio State palette and typography; saved freezer colors identify physical items. */
+.user-question-set-view {
+  border-top: 6px solid #ba0c2f;
+  box-shadow: 0 8px 24px rgb(33 35 37 / 6%);
+}
+
+.user-question-set-view .training-heading {
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+}
+
+.user-question-set-view .training-heading h1,
+.user-question-set-view > h1 {
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.user-question-set-view .training-eyebrow,
+.user-question-set-view .tutorial-shelf-label {
+  color: var(--primary);
+  font-weight: 800;
+  letter-spacing: 1.2px;
+}
+
+.user-question-set-view .training-question {
+  border-top: 4px solid #ba0c2f;
+  border-radius: 3px;
+  background: var(--training-panel);
+}
+
+.user-question-set-view .training-prompt {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.user-question-set-view .question-set-score {
+  color: var(--text);
+}
+
+.user-question-set-view .tutorial-level {
+  border-radius: 3px;
+  background: var(--training-panel);
+}
+
+.user-question-set-view .tutorial-level.is-current {
+  border-color: #ba0c2f;
+  color: #fff;
+  background: #ba0c2f;
+}
+
+.user-question-set-view .tutorial-level.is-current strong {
+  color: #fff;
+}
+
+.user-question-set-view .tutorial-level.is-complete,
+.user-question-set-view .tutorial-level.is-complete strong {
+  border-color: var(--border);
+  color: var(--text);
+  background: var(--training-complete);
+}
+
+.user-question-set-view .tutorial-strikes,
+.user-question-set-view .question-set-timer {
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+.user-question-set-view .question-set-timer {
+  border-color: var(--border);
+  border-top: 4px solid #ba0c2f;
+}
+
+.user-question-set-view .question-set-timer.is-low {
+  border-color: var(--danger);
+  background: var(--danger-background);
+}
+
+.user-question-set-view .tutorial-completion {
+  border-color: var(--border);
+  border-top: 4px solid #ba0c2f;
+  background: var(--training-panel);
+}
+
+.user-question-set-view :is(#btn-question-set-next, #btn-question-set-restart) {
+  border-color: #ba0c2f;
+  color: #fff;
+  background: #ba0c2f;
+}
+
+.user-question-set-view :is(#btn-question-set-next, #btn-question-set-restart):hover {
+  border-color: #70071c;
+  background: #70071c;
+}
+
+.user-question-set-launcher {
+  border-top: 4px solid #ba0c2f;
+  border-radius: 3px;
+  background: var(--surface-raised);
 }
