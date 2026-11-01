@@ -76,6 +76,26 @@ describe('TutorialTrainingModeView - level flow', () => {
 });
 
 describe('TutorialTrainingModeView - what each level shows', () => {
+  it('renders racks as color-coded cards and boxes in a 4x4 grid with empty slots', () => {
+    const rackView = TutorialTrainingModeView();
+    expect(rackView).toContain('style="--tutorial-rack-color: #2878b8"');
+    expect(rackView).toContain('data-training-target="tutorial-rack-1"');
+    expect(rackView).toContain('2 / 16 boxes filled');
+
+    answerTrainingTarget('tutorial-rack-1');
+    toggleTrainingRack('tutorial-rack-1');
+    const html = TutorialTrainingModeView();
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const grid = root.querySelector('.tutorial-boxes');
+    expect(root.querySelector('.physical-freezer-layout')).not.toBeNull();
+    expect(grid?.children).toHaveLength(16);
+    expect(grid?.querySelectorAll('.question-set-box-slot')).toHaveLength(14);
+    expect(html).toContain('data-training-target="tutorial-box-1"');
+    expect(html).toContain('style="--tutorial-box-color: #42a889; --tutorial-box-foreground:');
+    expect(html).toContain('class="question-set-rack-capacity"');
+  });
+
   it('should show boxes as plain buttons at level 2, without samples', () => {
     answerTrainingTarget('tutorial-rack-1'); // now at L2
     toggleTrainingRack('tutorial-rack-1');
@@ -84,13 +104,22 @@ describe('TutorialTrainingModeView - what each level shows', () => {
     expect(html).not.toContain('tutorial-sample-grid');
   });
 
-  it('should show a 9x9 sample grid when a box is expanded at level 3', () => {
+  it('should show the expanded 9x9 sample grid below the box grid at level 3', () => {
     answerTrainingTarget('tutorial-rack-1');
     answerTrainingTarget('tutorial-box-1'); // now at L3
     toggleTrainingRack('tutorial-rack-1');
     toggleTrainingBox('tutorial-box-1');
     const html = TutorialTrainingModeView();
     expect(html).toContain('aria-label="Sample 1001, position A1"');
+    expect(html).toContain('data-training-target="tutorial-sample-1001"');
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const grid = root.querySelector('.tutorial-boxes');
+    const details = root.querySelector('.question-set-box-details');
+    expect(grid?.children).toHaveLength(16);
+    expect(grid?.nextElementSibling).toBe(details);
+    expect(details?.querySelector('.tutorial-sample-grid')?.children).toHaveLength(81);
+    expect(details?.querySelector('.tutorial-sample-grid')?.getAttribute('style')).toContain('--tutorial-box-foreground');
     // 81 cells total: 3 samples are targets, the other 78 are empty
     expect(html.match(/tutorial-sample-empty/g)?.length).toBe(78);
   });

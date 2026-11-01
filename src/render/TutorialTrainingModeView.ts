@@ -241,8 +241,9 @@ function targetClass(targetId: string): string {
     return currentQuestion?.targetId === targetId ? ' is-correct' : '';
 }
 
-function renderSampleGrid(box: TutorialBox): string {
+function renderSampleGrid(box: TutorialBox, rack: TutorialRack): string {
     const samplesByPosition = new Map(box.samples.map(sample => [`${sample.row}-${sample.column}`, sample]));
+    const boxColor = getBoxColor(box, rack);
     let cells = '';
     for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.boxRows; row++) {
         for (let column = 1; column <= FREEZER_LAYOUT_LIMITS.boxColumns; column++) {
@@ -252,52 +253,87 @@ function renderSampleGrid(box: TutorialBox): string {
                 continue;
             }
             const label = samplePosition(sample);
-            cells += `<button class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${sample.id}" aria-label="${escapeHtml(sample.name)}, position ${label}" title="${escapeHtml(sample.name)}">${label}</button>`;
+            cells += `<button type="button" class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${escapeHtml(sample.id)}" aria-label="${escapeHtml(sample.name)}, position ${label}" title="${escapeHtml(sample.name)}">${label}</button>`;
         }
     }
-    return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${box.color}">${cells}</div>`;
+    return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${getReadableTextColor(boxColor)}">${cells}</div>`;
 }
 
-function renderBox(box: TutorialBox): string {
+function getBoxColor(box: TutorialBox, rack: TutorialRack): string {
+    if (isHexColor(box.color)) return box.color;
+    return isHexColor(rack.color) ? rack.color : '#FFFFFF';
+}
+
+function renderBox(box: TutorialBox, rack: TutorialRack): string {
+    const boxColor = getBoxColor(box, rack);
+    const boxForeground = getReadableTextColor(boxColor);
     if (currentLevel === 2) {
-        return `<button class="tutorial-box-target${targetClass(box.id)}" style="--tutorial-box-color: ${box.color}" data-training-target="${box.id}">${escapeHtml(box.name)}</button>`;
+        return `<button type="button" class="tutorial-box-target${targetClass(box.id)}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-target="${escapeHtml(box.id)}">${escapeHtml(box.name)}</button>`;
     }
 
     const isExpanded = expandedBoxId === box.id;
-    return `
-        <div class="tutorial-box${isExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${box.color}">
-            <button class="tutorial-box-toggle" data-training-toggle-box="${box.id}" aria-expanded="${isExpanded}">${isExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>
-            ${isExpanded ? renderSampleGrid(box) : ''}
-        </div>
-    `;
+    return `<button type="button" class="tutorial-box-toggle${isExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-toggle-box="${escapeHtml(box.id)}" aria-expanded="${isExpanded}">${isExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>`;
 }
 
 function renderRack(rack: TutorialRack): string {
     const isExpanded = expandedRackId === rack.id;
     const contents = currentLevel > 1 && isExpanded
-        ? `<div class="tutorial-boxes">${rack.boxes.map(renderBox).join('')}</div>`
+        ? renderBoxGrid(rack)
         : '';
 
     if (currentLevel === 1) {
         return `
-            <li class="tutorial-rack" style="--tutorial-rack-color: ${rack.color}">
-                <button class="tutorial-rack-target${targetClass(rack.id)}" data-training-target="${rack.id}">
+            <li class="tutorial-rack" style="--tutorial-rack-color: ${isHexColor(rack.color) ? rack.color : '#FFFFFF'}">
+                <button type="button" class="tutorial-rack-target${targetClass(rack.id)}" data-training-target="${escapeHtml(rack.id)}">
                     <span class="tutorial-color-key" aria-hidden="true"></span>
                     <span>${escapeHtml(rack.name)}</span>
                 </button>
+                <p class="question-set-rack-capacity">${rack.boxes.length} / ${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes filled</p>
             </li>
         `;
     }
 
     return `
-        <li class="tutorial-rack${isExpanded ? ' is-expanded' : ''}" style="--tutorial-rack-color: ${rack.color}">
-            <button class="tutorial-rack-toggle" data-training-toggle-rack="${rack.id}" aria-expanded="${isExpanded}">
+        <li class="tutorial-rack${isExpanded ? ' is-expanded' : ''}" style="--tutorial-rack-color: ${isHexColor(rack.color) ? rack.color : '#FFFFFF'}">
+            <button type="button" class="tutorial-rack-toggle" data-training-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${isExpanded}">
                 <span class="tutorial-color-key" aria-hidden="true"></span>
                 <span>${isExpanded ? '▼' : '▶'} ${escapeHtml(rack.name)}</span>
             </button>
+            <p class="question-set-rack-capacity">${rack.boxes.length} / ${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes filled</p>
             ${contents}
         </li>
     `;
+}
+
+function renderBoxGrid(rack: TutorialRack): string {
+    const boxesByPosition = new Map(rack.boxes.map(box => [`${box.row}-${box.column}`, box]));
+    let cells = '';
+    for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.rackRows; row++) {
+        for (let column = 1; column <= FREEZER_LAYOUT_LIMITS.rackColumns; column++) {
+            const box = boxesByPosition.get(`${row}-${column}`);
+            cells += box
+                ? renderBox(box, rack)
+                : `<div class="question-set-box-slot" role="img" aria-label="Empty box slot, row ${row}, column ${column}"></div>`;
+        }
+    }
+
+    const expandedBox = currentLevel === 3 ? rack.boxes.find(box => box.id === expandedBoxId) : undefined;
+    const details = expandedBox
+        ? `<section class="question-set-box-details" aria-label="Box positions"><h3>${escapeHtml(expandedBox.name)} — positions</h3>${renderSampleGrid(expandedBox, rack)}</section>`
+        : '';
+
+    return `<div class="tutorial-boxes">${cells}</div>${details}`;
+}
+
+function isHexColor(value: string | undefined): value is string {
+    return value !== undefined && /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function getReadableTextColor(hexColor: string): string {
+    const red = parseInt(hexColor.slice(1, 3), 16);
+    const green = parseInt(hexColor.slice(3, 5), 16);
+    const blue = parseInt(hexColor.slice(5, 7), 16);
+    return (red * 299 + green * 587 + blue * 114) / 1000 > 150 ? '#18334d' : '#ffffff';
 }
 
 function renderTutorialLayout(): string {
@@ -330,7 +366,7 @@ export function TutorialTrainingModeView(): string {
     if (!currentQuestion) startQuestion();
 
     return `
-        <section class="training-view tutorial-training">
+        <section class="training-view tutorial-training physical-freezer-layout">
             <header class="training-heading training-active-heading">
                 <div>
                     <p class="training-eyebrow">STATIC TUTORIAL</p>
