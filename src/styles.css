@@ -2093,3 +2093,48 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: 3px;
   background: var(--surface-raised);
 }
+
+@media print {
+  .app-header,
+  #app,
+  .navigation {
+    display: none !important;
+  }
+
+  #print-root {
+    display: block;
+    color-scheme: light;
+    --text: #212325;
+    --border: #cfd4d8;
+    --surface: #fff;
+    --surface-raised: #f6f7f8;
+    --freezer-interior: #dfe3e5;
+    --freezer-shelf-edge: #a7b1b7;
+    color: var(--text);
+  }
+
+  body {
+    min-height: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  #print-root * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+    #print-root .racks {
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  #print-root .rack {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #print-root .shelf {
+    break-inside: avoid;
+  }
+}
