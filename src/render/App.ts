@@ -41,6 +41,7 @@ import {
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
 import { validateFreezerLayout } from '../services/LayoutValidator.js';
+import { FreezerEditor } from './FreezerEditor.js';
 
 function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
     return new Promise(resolve => {
@@ -655,6 +656,23 @@ export function App(): void {
                 link.download = `${currentLayout.name}.json`;
                 link.click();
                 URL.revokeObjectURL(url);
+            });
+        }
+
+            // FreezerEditor - Export to PDF button
+        const btnExportPdf = document.getElementById('btn-export-pdf');
+        if (btnExportPdf) {
+            btnExportPdf.addEventListener('click', () => {
+                const currentLayout = getCurrentEditingLayout();
+                if (!currentLayout) return;
+
+                const printRoot = document.createElement('div');
+                printRoot.id = 'print-root';
+                printRoot.innerHTML = FreezerEditor(currentLayout, true, { exportView: true });
+                document.body.appendChild(printRoot);
+
+                window.addEventListener('afterprint', () => printRoot.remove(), { once: true });
+                window.print();
             });
         }
 

@@ -303,3 +303,92 @@ describe('FreezerEditor - box colors', () => {
   });
 });
 
+describe('Export to PDF', () => {
+  let testLayout: SavedLayout;
+  beforeEach(() => {
+    testLayout = {
+      id: 'layout-1',
+      name: 'Secret Layout Name',
+      freezerData: { schemaVersion: '1.0', id: 'freezer-1', name: 'Test Freezer', shelves: [], samples: [] },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    (editorState.getExpandedShelfId as any).mockReturnValue(null);
+    (editorState.getExpandedRackId as any).mockReturnValue(null);
+    (editorState.getExpandedBoxId as any).mockReturnValue(null);
+
+    // Two shelves, colored racks, and a rack holding a box with a sample.
+    const makeSlots = (withBox: boolean) =>
+      Array.from({ length: 16 }, (_, i) => ({
+        row: Math.floor(i / 4) + 1,
+        column: (i % 4) + 1,
+        box: withBox && i === 0
+          ? { id: 'box-1', name: 'Box 1', positions: [{ id: 'pos-1', row: 1, column: 1, sampleId: 's1' }] }
+          : null
+      }));
+
+    testLayout.name = 'Secret Layout Name';
+    testLayout.freezerData.shelves = [
+      { id: 'shelf-1', name: 'Shelf 1', racks: [
+        { id: 'rack-1', name: 'Rack 1', color: '#E53935', boxSlots: makeSlots(true) },
+        { id: 'rack-2', name: 'Rack 2', color: '#2878C7', boxSlots: makeSlots(false) }
+      ] },
+      { id: 'shelf-2', name: 'Shelf 2', racks: [
+        { id: 'rack-3', name: 'Rack 3', color: '#2E9D50', boxSlots: makeSlots(false) }
+      ] }
+    ] as any;
+  });
+
+  it('shows every shelf and rack even when nothing is expanded', () => {
+    const html = FreezerEditor(testLayout, true, { exportView: true });
+    for (const name of ['Shelf 1', 'Shelf 2', 'Rack 1', 'Rack 2', 'Rack 3']) {
+      expect(html).toContain(name);
+    }
+  });
+
+  it('keeps shelves and racks in layout order', () => {
+    const html = FreezerEditor(testLayout, true, { exportView: true });
+    const order = ['Shelf 1', 'Rack 1', 'Rack 2', 'Shelf 2', 'Rack 3'].map(n => html.indexOf(n));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it('includes the rack colors', () => {
+    const html = FreezerEditor(testLayout, true, { exportView: true });
+    expect(html).toContain('--item-color: #E53935');
+    expect(html).toContain('--item-color: #2878C7');
+    expect(html).toContain('--item-color: #2E9D50');
+  });
+
+  it('leaves out box grids and sample positions', () => {
+    const html = FreezerEditor(testLayout, true, { exportView: true });
+    expect(html).not.toContain('box-grid');
+    expect(html).not.toContain('rack-grid');
+    expect(html).not.toContain('box-position');
+    expect(html).not.toContain('Box 1');
+  });
+
+  it('leaves out buttons, the layout name and JSON', () => {
+    const html = FreezerEditor(testLayout, false, { exportView: true });
+    expect(html).not.toContain('<button');
+    expect(html).not.toContain('<input');
+    expect(html).not.toContain('schemaVersion');
+  });
+
+  it('escapes shelf and rack names', () => {
+    testLayout.freezerData.shelves[0]!.name = '<b>Shelf</b>';
+    const html = FreezerEditor(testLayout, true, { exportView: true });
+    expect(html).not.toContain('<b>Shelf</b>');
+    expect(html).toContain('&lt;b&gt;Shelf&lt;/b&gt;');
+  });
+
+  it('shows the export button in admin and user mode', () => {
+    expect(FreezerEditor(testLayout, false)).toContain('id="btn-export-pdf"');
+    expect(FreezerEditor(testLayout, true)).toContain('id="btn-export-pdf"');
+  });
+
+  it('does not change the normal view', () => {
+    const html = FreezerEditor(testLayout, true);
+    expect(html).toContain('btn-back-to-layouts');
+  });
+});
+

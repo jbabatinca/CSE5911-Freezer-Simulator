@@ -52,7 +52,35 @@ function renderColorPicker(kind: 'rack' | 'box', id: string, name: string, color
   `;
 }
 
-export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): string {
+export interface FreezerEditorOptions {
+  /** Print/PDF view: all shelves open, racks only, no box grids or controls. */
+  exportView?: boolean;
+}
+
+export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, options: FreezerEditorOptions = {}): string {
+  const exportView = options.exportView ?? false;
+  if (exportView) {
+    return `
+      <div class="freezer-editor freezer-export">
+        <h2>${escapeHtml(layout.name)}</h2>
+        <section class="freezer" aria-label="${escapeHtml(layout.name)}">
+          ${layout.freezerData.shelves.map(shelf => `
+            <section class="shelf" aria-label="${escapeHtml(shelf.name)}">
+              <div class="shelf-header"><h3>${escapeHtml(shelf.name)}</h3></div>
+              <ul class="racks">
+                ${shelf.racks.map(rack => {
+                  const rackColor = isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
+                  return `
+                    <li class="rack color-coded" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">
+                      <div class="rack-info"><h4>${escapeHtml(rack.name)}</h4></div>
+                    </li>`;
+                }).join('')}
+              </ul>
+            </section>`).join('')}
+        </section>
+      </div>
+    `;
+  }
   const shelves = layout.freezerData.shelves;
   const expandedShelfId = getExpandedShelfId();
   const expandedRackId = getExpandedRackId();
@@ -77,6 +105,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false): s
           <button id="btn-delete" class="btn-delete">Delete</button>
         `}
         <button id="btn-download" class="btn-download">Download</button>
+        <button id="btn-export-pdf" class="btn-download">Export to PDF</button>
       </div>
 
       <div class="editor-content">
