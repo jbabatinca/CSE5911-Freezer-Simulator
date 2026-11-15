@@ -42,6 +42,8 @@ import {
 } from '../state/editorState.js';
 import { validateFreezerLayout } from '../services/LayoutValidator.js';
 import { FreezerEditor } from './FreezerEditor.js';
+import { ProgressHistoryView } from './ProgressHistoryView.js';
+import { clearAttempts } from '../services/AttemptHistoryService.js';
 
 function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
     return new Promise(resolve => {
@@ -128,6 +130,8 @@ export function App(): void {
             html += isAdmin ? QuestionSetCreatorView() : TutorialTrainingModeView();
         } else if (mode === 'question-set-user') {
             html += renderUserQuestionSetView(selectedUserQuestionSetId ?? '');
+        } else if (mode === 'progress-history') {
+            html += ProgressHistoryView();
         }
 
         // Show modals if needed
@@ -329,6 +333,18 @@ export function App(): void {
                 render();
             });
         }
+
+        document.getElementById('btn-user-history')?.addEventListener('click', () => {
+            setMode('progress-history');
+            render();
+        });
+
+        document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+            if (confirm('Clear all saved attempts? This cannot be undone.')) {
+                clearAttempts();
+                render();
+            }
+        });
 
         const userQuestionSetSelect = document.getElementById('user-question-set-select') as HTMLSelectElement | null;
         const btnOpenQuestionSet = document.getElementById('btn-open-question-set') as HTMLButtonElement | null;

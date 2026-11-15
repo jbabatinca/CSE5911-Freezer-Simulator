@@ -24,6 +24,7 @@ export function UserModeHomeView(): string {
             <button id="btn-user-training" class="mode-button">
                 Tutorial Mode
             </button>
+            <button id="btn-user-history" class="mode-button">Progress History</button>
         </div>
         <section class="user-question-set-launcher" aria-labelledby="custom-training-title">
             <h3 id="custom-training-title">Training Mode</h3>

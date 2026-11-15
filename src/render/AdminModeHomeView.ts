@@ -11,6 +11,9 @@ export function AdminModeHomeView(): string {
             <button id="btn-admin-training" class="mode-button">
                 Question Set Creator Mode
             </button>
+            <button id="btn-user-history" class="mode-button">
+                Progress History
+            </button>
         </div>
     </div>
     `;

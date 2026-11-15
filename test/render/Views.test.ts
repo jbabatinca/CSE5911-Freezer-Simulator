@@ -3,11 +3,17 @@ import * as modeState from '../../src/state/modeState.js';
 import * as authState from '../../src/state/authState.js';
 import * as layoutState from '../../src/state/layoutState.js';
 import * as configState from '../../src/state/configurationState.js';
+import { AdminModeHomeView } from '../../src/render/AdminModeHomeView.js';
+import { parseView } from '../helpers/questionSets.js';
 
 vi.mock('../../src/state/modeState.js');
 vi.mock('../../src/state/authState.js');
 vi.mock('../../src/state/layoutState.js');
 vi.mock('../../src/state/configurationState.js');
+
+it('shows the Progress History button in admin home', () => {
+  expect(parseView(AdminModeHomeView()).querySelector('#btn-user-history')).not.toBeNull();
+});
 
 describe('View Components', () => {
   beforeEach(() => {
