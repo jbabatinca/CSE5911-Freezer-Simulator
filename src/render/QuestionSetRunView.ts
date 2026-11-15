@@ -5,6 +5,8 @@ import { getQuestionSet } from '../services/QuestionSetService.js';
 import { getLayout } from '../services/StorageService.js';
 import { resolveQuestionTarget } from '../services/QuestionTargetService.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
+import { saveAttempt, generateAttemptId } from '../services/AttemptHistoryService.js';
+import type { AttemptOutcome } from '../models/AttemptRecord.js';
 
 let activeQuestionSetId: string | null = null;
 let activeQuestionIndex = 0;
@@ -52,6 +54,7 @@ function formatDuration(ms: number): string {
 /** Restarts the run from question 1 when the countdown has expired. Returns true if it restarted. */
 export function enforceQuestionSetTimeLimit(): boolean {
     if (!activeQuestionSetId || runComplete || frozenRemainingMs !== null || getQuestionSetRemainingMs() > 0) return false;
+    recordAttempt('failed-time'); 
     startQuestionSetRun(activeQuestionSetId);
     restartReason = 'time';
     return true;
@@ -71,6 +74,25 @@ export function refreshQuestionSetTimer(): boolean {
 
 function getScore(): number {
     return results.filter(result => result.outcome === 'correct').length;
+}
+
+function recordAttempt(outcome: AttemptOutcome): void {
+  const questionSet = activeQuestionSetId ? getQuestionSet(activeQuestionSetId) : null;
+  if (!questionSet) return;
+  saveAttempt({
+    id: generateAttemptId(),
+    questionSetId: questionSet.id,
+    questionSetName: questionSet.name,
+    startedAt: new Date(setStartedAt).toISOString(),
+    outcome,
+    score: getScore(),
+    totalQuestions: questionSet.questions.length,
+    totalTimeMs: Math.min(Date.now() - setStartedAt, SET_TIME_LIMIT_MS),
+    questions: results.map(result => ({
+      ...result,
+      targetType: questionSet.questions.find(q => q.id === result.questionId)?.targetType ?? 'rack'
+    }))
+  });
 }
 
 function escapeHtml(value: string): string {
@@ -118,6 +140,7 @@ export function submitQuestionSetAnswer(targetId: string): void {
     else {
         misses++;
         if (misses >= 3) {
+            recordAttempt('failed-misses');
             const questionSetId = activeQuestionSetId;
             if (questionSetId) {
                 startQuestionSetRun(questionSetId);
@@ -129,6 +152,7 @@ export function submitQuestionSetAnswer(targetId: string): void {
     if (outcome) {
         results.push({ questionId: question.id, outcome, misses, timeMs: lastAnswerMs ?? 0 });
         if (questionSet && activeQuestionIndex === questionSet.questions.length - 1) frozenRemainingMs = getQuestionSetRemainingMs();
+        recordAttempt('completed');
         // Reveal nested answers even if the user was searching a different rack or box.
         expandedRackId = target.rackId;
         expandedBoxId = target.boxId;

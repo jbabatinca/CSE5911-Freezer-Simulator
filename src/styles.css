@@ -2167,3 +2167,88 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     font-size: 13px;
   }
 }
+
+/* ---------- Progress history ---------- */
+.progress-history {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.history-summary {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.history-summary p {
+  margin: 0.25rem 0;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.history-list > li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.history-list > li.is-completed {
+  background: var(--success-background);
+  border-color: var(--success-text);
+}
+
+.history-list > li.is-failed {
+  background: var(--danger-background);
+  border-color: var(--danger);
+}
+
+.history-list > li.is-completed summary:hover,
+.history-list > li.is-failed summary:hover {
+  filter: brightness(0.95);
+}
+
+.history-list summary {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  color: var(--text);
+}
+
+.history-list summary:hover {
+  background: var(--surface-hover);
+}
+
+.history-list details[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.history-list details ol {
+  margin: 0;
+  padding: 0.75rem 1rem 0.75rem 2.25rem;
+  color: var(--muted);
+}
+
+.history-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.history-badge.is-completed {
+  background: var(--success-background);
+  color: var(--success-text);
+}
+
+.history-badge.is-failed {
+  background: var(--danger-background);
+  color: var(--danger);
+}
+
