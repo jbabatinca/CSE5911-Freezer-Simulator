@@ -26,7 +26,7 @@ import { AdminPasswordModal } from './AdminPasswordModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
 import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationState.js';
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
-import { deleteLayout, generateLayoutId, getLayout, saveLayout } from '../services/StorageService.js';
+import { deleteLayout, generateLayoutId, getAllLayouts, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { QuestionTargetType } from '../models/QuestionSet.js';
 import { 
@@ -44,6 +44,7 @@ import { validateFreezerLayout } from '../services/LayoutValidator.js';
 import { FreezerEditor } from './FreezerEditor.js';
 import { ProgressHistoryView } from './ProgressHistoryView.js';
 import { clearAttempts } from '../services/AttemptHistoryService.js';
+import { searchLayouts } from '../services/LayoutSearchService.js';
 
 function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
     return new Promise(resolve => {
@@ -89,6 +90,10 @@ export function App(): void {
     const app = document.getElementById('app');
     if (!app) return;
     let selectedUserQuestionSetId: string | null = null;
+    let searchLayout: SavedLayout | null = null;
+    let layoutSearchQuery = '';
+    let selectedSearchKey: string | null = null;
+    let layoutSearchOpen = false;
 
     initializeAuth();
     render();
@@ -105,6 +110,13 @@ export function App(): void {
     function render(): void {
         if (!app) return;
         const mode = getCurrentMode();
+        const currentSearchLayout = mode === 'freezer-layouts' ? getCurrentEditingLayout() : null;
+        if (mode !== 'freezer-layouts' || currentSearchLayout !== searchLayout) {
+            searchLayout = currentSearchLayout;
+            layoutSearchQuery = '';
+            selectedSearchKey = null;
+            layoutSearchOpen = false;
+        }
         const isAdmin = isAdminAuthenticated();
         const showPasswordModal = getShowAdminPasswordModal();
         const showSettingsModal = getShowAdminSettingsModal();
@@ -125,7 +137,11 @@ export function App(): void {
         } else if (mode === 'configuration' && isAdmin) {
             html += ConfigurationModeView(false);
         } else if (mode === 'freezer-layouts') {
-            html += ConfigurationModeView(true);
+            html += ConfigurationModeView(true, {
+                searchQuery: layoutSearchQuery,
+                selectedSearchKey,
+                searchOpen: layoutSearchOpen,
+            });
         } else if (mode === 'training') {
             html += isAdmin ? QuestionSetCreatorView() : TutorialTrainingModeView();
         } else if (mode === 'question-set-user') {
@@ -148,6 +164,66 @@ export function App(): void {
     }
 
     function attachEventListeners(): void {
+        const searchToggle = document.getElementById('btn-toggle-layout-search');
+        const searchPanel = document.getElementById('layout-search-panel');
+        function setSearchOpen(open: boolean): void {
+            layoutSearchOpen = open;
+            if (searchPanel) searchPanel.hidden = !open;
+            searchToggle?.setAttribute('aria-expanded', String(open));
+            (open ? document.getElementById('layout-search-input') : searchToggle)?.focus();
+        }
+        searchToggle?.addEventListener('click', () => setSearchOpen(!layoutSearchOpen));
+        document.getElementById('btn-close-layout-search')?.addEventListener('click', () => setSearchOpen(false));
+        searchPanel?.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSearchOpen(false);
+            }
+        });
+
+        const searchForm = document.getElementById('layout-search-form');
+        searchForm?.addEventListener('submit', event => {
+            event.preventDefault();
+            const input = document.getElementById('layout-search-input') as HTMLInputElement;
+            layoutSearchQuery = input.value.trim();
+            selectedSearchKey = null;
+            render();
+            document.getElementById('layout-search-input')?.focus();
+        });
+
+        document.getElementById('btn-clear-layout-search')?.addEventListener('click', () => {
+            layoutSearchQuery = '';
+            selectedSearchKey = null;
+            render();
+            document.getElementById('layout-search-input')?.focus();
+        });
+
+        document.querySelectorAll<HTMLElement>('[data-layout-search-key]').forEach(button => {
+            button.addEventListener('click', () => {
+                const currentLayout = getCurrentEditingLayout();
+                const layouts = currentLayout ? [currentLayout] : getAllLayouts();
+                const result = searchLayouts(layouts, layoutSearchQuery)
+                    .find(item => item.key === button.dataset.layoutSearchKey);
+                if (!result) return;
+                const layout = layouts.find(item => item.id === result.layoutId);
+                if (!layout) return;
+                searchLayout = layout;
+                setCurrentEditingLayout(layout);
+                selectedSearchKey = result.key;
+                setExpandedShelfId(result.shelfId);
+                setExpandedRackId(result.rackId);
+                setExpandedBoxId(result.boxId);
+                render();
+                const targetId = result.positionId ? `pos-${result.positionId}`
+                    : result.boxId ? `box-${result.boxId}`
+                    : result.rackId ? `rack-${result.rackId}`
+                    : result.shelfId ? `shelf-${result.shelfId}` : 'freezer-title';
+                const target = document.getElementById(targetId);
+                target?.focus({ preventScroll: true });
+                target?.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+            });
+        });
+
         // Home screen buttons
         const btnAdminMode = document.getElementById('btn-admin-mode');
         const btnUserMode = document.getElementById('btn-user-mode');
@@ -724,7 +800,7 @@ export function App(): void {
         });
 
         // Configuration mode - Click on existing layout to open in editor
-        document.querySelectorAll('[id^="layout-"]').forEach(btn => {
+        document.querySelectorAll('.layout-button[id^="layout-"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const layoutId = btn.id.replace('layout-', '');
             const layout = getLayout(layoutId);
