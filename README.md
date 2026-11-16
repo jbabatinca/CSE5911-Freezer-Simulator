@@ -14,6 +14,26 @@ checking, three-miss reveals, scoring, restart, and changing sets. See
 [Training Mode](docs/training-mode.md) for the rules, shared target resolver, and
 verification commands.
 
+## Layout search
+
+In **User Mode → Layout View** or **Admin Mode → Configuration Mode**, search
+across all saved layouts by layout, freezer, shelf, rack, box, or sample name, or
+by a position such as A1. Click the
+**Search** button at the top to open the search bar (beside **Download** and
+**Export to PDF** inside a layout). Enter all or part of a name, then select
+**Find** or press Enter. Search ignores capitalization and surrounding spaces.
+Click **Search** again, the close button, or press Escape in the search panel to
+hide it. Closing and reopening preserves the current search and highlighting.
+
+Results show their type and full location, starting with the layout name. Select
+a result to open its layout, expand its path, highlight the item and its ancestors,
+and focus the item. Samples stored in multiple positions have a result for each
+location. Searching inside an open layout covers that layout only. **Clear**
+removes the search and highlighting; leaving the layout resets the search.
+Training questions and PDF exports keep their existing behavior.
+Admin searches use the current editor draft, including unsaved names and layout
+changes. Searching does not save the layout; use **Save** to persist your edits.
+
 ## Application themes
 
 - Use the **sun** icon in the application header to switch to **Light Mode**.

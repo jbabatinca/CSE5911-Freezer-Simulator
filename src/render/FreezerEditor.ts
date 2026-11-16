@@ -1,6 +1,8 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { SamplePosition, FreezerBox, FreezerRack, Sample } from '../models/freezerLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
+import { searchLayouts } from '../services/LayoutSearchService.js';
+import { LayoutSearchButton, LayoutSearchView } from './LayoutSearchView.js';
 import {
   getExpandedShelfId,
   getExpandedRackId,
@@ -55,6 +57,9 @@ function renderColorPicker(kind: 'rack' | 'box', id: string, name: string, color
 export interface FreezerEditorOptions {
   /** Print/PDF view: all shelves open, racks only, no box grids or controls. */
   exportView?: boolean;
+  searchQuery?: string;
+  selectedSearchKey?: string | null;
+  searchOpen?: boolean;
 }
 
 export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, options: FreezerEditorOptions = {}): string {
@@ -85,6 +90,9 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
   const expandedShelfId = getExpandedShelfId();
   const expandedRackId = getExpandedRackId();
   const expandedBoxId = getExpandedBoxId();
+  const searchQuery = options.searchQuery ?? '';
+  const searchResults = searchLayouts([layout], searchQuery);
+  const selected = searchResults.find(result => result.key === options.selectedSearchKey);
 
   return `
     <div class="freezer-editor">
@@ -92,24 +100,27 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
         <button id="btn-back-to-layouts" class="btn-back">← Back to Layouts</button>
 
         ${readOnly ? `
-          <span class="layout-name-display">${layout.name}</span>
+          <span class="layout-name-display">${escapeHtml(layout.name)}</span>
         ` : `
           <input
             type="text"
             id="layout-name-input"
-            value="${layout.name}"
+            value="${escapeHtml(layout.name)}"
             placeholder="Layout name"
             class="layout-name-input"
           />
           <button id="btn-save" class="btn-save">Save</button>
           <button id="btn-delete" class="btn-delete">Delete</button>
         `}
+        ${LayoutSearchButton(options.searchOpen)}
         <button id="btn-download" class="btn-download">Download</button>
         <button id="btn-export-pdf" class="btn-download">Export to PDF</button>
       </div>
 
+      ${LayoutSearchView(searchQuery, searchResults, selected?.key ?? null, false, options.searchOpen)}
+
       <div class="editor-content">
-        <h2 id="freezer-title">${layout.name}</h2>
+        <h2 id="freezer-title" tabindex="-1" class="${selected?.type === 'layout' ? 'layout-search-target' : ''}">${escapeHtml(layout.name)}</h2>
         <p>Front view — shelves are shown from top to bottom.</p>
 
         <section class="freezer" aria-labelledby="freezer-title">
@@ -118,7 +129,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
             : shelves.map((shelf, shelfIdx) => {
                 const isExpanded = expandedShelfId === shelf.id;
                 return `
-                  <section class="shelf" aria-label="${shelf.name}">
+                  <section id="shelf-${escapeHtml(shelf.id)}" tabindex="-1" class="shelf${selected?.shelfId === shelf.id ? ' layout-search-ancestor' : ''}${selected?.type === 'shelf' && selected.shelfId === shelf.id ? ' layout-search-target' : ''}" aria-label="${escapeHtml(shelf.name)}">
                     <div class="shelf-header">
                       <button id="btn-toggle-shelf-${shelf.id}" class="btn-toggle">
                         ${isExpanded ? '▼' : '▶'}
@@ -137,7 +148,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
                               const rackExpanded = expandedRackId === rack.id;
                               const rackColor = isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
                               return `
-                                <li class="rack color-coded${rackExpanded ? ' rack-expanded' : ''}" id="rack-${rack.id}" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">
+                                <li tabindex="-1" class="rack color-coded${rackExpanded ? ' rack-expanded' : ''}${selected?.rackId === rack.id ? ' layout-search-ancestor' : ''}${selected?.type === 'rack' && selected.rackId === rack.id ? ' layout-search-target' : ''}" id="rack-${escapeHtml(rack.id)}" aria-label="${escapeHtml(rack.name)}" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">
                                   <div class="rack-info">
                                     <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
                                       ${rackExpanded ? '▼' : '▶'}
@@ -151,7 +162,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
 
                                   ${rackExpanded ? `
                                     <div class="rack-grid">
-                                      ${renderBoxGrid(rack, expandedBoxId, readOnly, layout.freezerData.samples ?? [])}
+                                      ${renderBoxGrid(rack, expandedBoxId, readOnly, layout.freezerData.samples ?? [], selected?.boxId ?? null, selected?.positionId ?? null, selected?.type === 'box')}
                                     </div>
                                   ` : ''}
                                 </li>
@@ -172,12 +183,12 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
   `;
 }
 
-function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean, samples: Sample[]): string {
+function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly: boolean, samples: Sample[], selectedBoxId: string | null, selectedPositionId: string | null, highlightBox: boolean): string {
   let html = '<div class="box-grid">';
 
   for (let i = 0; i < rack.boxSlots.length; i++) {
     const slot = rack.boxSlots[i]!;
-    const hasBox = slot.box !== null;
+    const hasBox = slot.box != null;
 
     if (hasBox) {
       const boxExpanded = expandedBoxId === slot.box!.id;
@@ -186,7 +197,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
         ? slot.box!.color
         : isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
       html += `
-        <div class="box-container color-coded${boxExpanded ? ' box-selected' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
+        <div id="box-${escapeHtml(slot.box!.id)}" tabindex="-1" aria-label="${escapeHtml(slot.box!.name)}" class="box-container color-coded${boxExpanded ? ' box-selected' : ''}${selectedBoxId === slot.box!.id ? ' layout-search-ancestor' : ''}${highlightBox && selectedBoxId === slot.box!.id ? ' layout-search-target' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
             ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
           </button>
@@ -221,7 +232,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       <section class="box-details" aria-label="Box positions">
         <h5>${expandedSlot.box.name} — positions</h5>
         <div class="box-positions-grid" style="--item-color: ${effectiveBoxColor}; --item-foreground: ${getReadableTextColor(effectiveBoxColor)}">
-          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column, readOnly, samples)}
+          ${renderPositionGrid(expandedSlot.box, expandedSlot.row, expandedSlot.column, readOnly, samples, selectedPositionId)}
         </div>
       </section>
     `;
@@ -229,7 +240,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
   return html;
 }
 
-function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: Sample[]): string {
+function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, readOnly: boolean, samples: Sample[], selectedPositionId: string | null): string {
   const { boxRows, boxColumns } = FREEZER_LAYOUT_LIMITS;
   const grid = Array<SamplePosition | null>(boxRows * boxColumns).fill(null);
   const sampleNames = new Map(samples.map(sample => [sample.id, sample.name]));
@@ -249,7 +260,7 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, rea
     if (pos) {
       const sampleName = pos.sampleId ? sampleNames.get(pos.sampleId) ?? pos.sampleId : '';
       html += `
-        <div id="pos-${pos.id}" class="box-position position-filled" style="position: relative;">
+        <div id="pos-${escapeHtml(pos.id)}" class="box-position position-filled${selectedPositionId === pos.id ? ' layout-search-target' : ''}" style="position: relative;" tabindex="-1" aria-label="${escapeHtml(sampleName ? `${sampleName}, position ${label}` : `Position ${label}`)}" title="${escapeHtml(sampleName ? `${sampleName} — ${label}` : label)}">
           ${label}
           ${!readOnly && pos.sampleId ? `<button id="btn-rename-sample-${pos.sampleId}" class="btn-rename-sample" aria-label="Rename ${escapeHtml(sampleName)}" title="Rename specimen">✎</button>` : ''}
           ${!readOnly ? `<button id="btn-remove-sample-${pos.id}" class="btn-remove-sample" title="Remove sample" style="position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; padding: 0; font-size: 12px; min-width: auto;">✕</button>` : ''}

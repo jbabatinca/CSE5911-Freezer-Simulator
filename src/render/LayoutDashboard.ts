@@ -1,6 +1,6 @@
 import { getAllLayouts } from '../services/StorageService.js';
 
-export function LayoutDashboard(readOnly: boolean = false): string {
+export function LayoutDashboard(readOnly: boolean = false, searchButton = '', searchPanel = ''): string {
   const layouts = getAllLayouts();
   console.log('Layouts for dashboard:', layouts);
 
@@ -28,7 +28,11 @@ export function LayoutDashboard(readOnly: boolean = false): string {
 
   return `
     <div class="layout-dashboard">
-      <h2>Freezer Layouts</h2>
+      <div class="layout-dashboard-header">
+        <h2>Freezer Layouts</h2>
+        ${searchButton}
+      </div>
+      ${searchPanel}
       <div class="layout-grid">
         ${buttonsHtml}
       </div>
