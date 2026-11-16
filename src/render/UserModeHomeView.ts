@@ -1,5 +1,7 @@
+/** UserModeHomeView.ts - renders user navigation and the saved question-set launcher. */
 import { getAllQuestionSets } from '../services/QuestionSetService.js';
 
+/** Escapes a supplied string for HTML text or quoted attributes and returns the safe markup value. */
 function escapeHtml(value: string): string {
     return value.replace(/[&<>"']/g, character => ({
         '&': '&amp;',
@@ -10,7 +12,9 @@ function escapeHtml(value: string): string {
     })[character]!);
 }
 
+/** Takes no arguments and returns user-home HTML populated with saved question sets and an initially disabled Open button. */
 export function UserModeHomeView(): string {
+    // App.ts enables launching after a set is selected and handles navigation by element id.
     const questionSets = getAllQuestionSets();
     return `
     <div class="mode-home-view">

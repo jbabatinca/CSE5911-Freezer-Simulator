@@ -1,6 +1,9 @@
+/** LayoutDashboard.ts - renders saved freezer buttons and optional search controls for viewing or editing. */
 import { getAllLayouts } from '../services/StorageService.js';
 
+/** Takes a read-only flag and optional search button/panel HTML, and returns dashboard HTML with Add Freezer in edit mode. */
 export function LayoutDashboard(readOnly: boolean = false, searchButton = '', searchPanel = ''): string {
+  // Search fragments are supplied by the caller; App.ts handles actions using the rendered button ids.
   const layouts = getAllLayouts();
   console.log('Layouts for dashboard:', layouts);
 

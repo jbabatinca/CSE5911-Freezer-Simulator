@@ -1,8 +1,12 @@
+/** TutorialTrainingModeView.ts - runs and renders a three-level rack, box, and sample tutorial using a fixed practice freezer. */
 import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
 
+/** Identifies the rack (1), box (2), or sample (3) stage of the tutorial. */
 type TutorialLevel = 1 | 2 | 3;
+/** Restricts feedback to the supported answer, progress, and completion display states. */
 type FeedbackKind = 'correct' | 'incorrect' | 'progress' | 'complete';
 
+/** Describes a practice sample with its id, name, and one-based position within a box. */
 interface TutorialSample {
     id: string;
     name: string;
@@ -10,6 +14,7 @@ interface TutorialSample {
     column: number;
 }
 
+/** Describes a colored practice box, its one-based rack position, and its sample contents. */
 interface TutorialBox {
     id: string;
     name: string;
@@ -19,6 +24,7 @@ interface TutorialBox {
     samples: TutorialSample[];
 }
 
+/** Describes a colored practice rack and the boxes it contains. */
 interface TutorialRack {
     id: string;
     name: string;
@@ -26,6 +32,7 @@ interface TutorialRack {
     boxes: TutorialBox[];
 }
 
+/** Holds a target id, prompt, selection instructions, and readable answer address for the current question. */
 interface TutorialQuestion {
     targetId: string;
     prompt: string;
@@ -33,6 +40,7 @@ interface TutorialQuestion {
     address: string;
 }
 
+// Practice data is independent of saved layouts; tutorial progress stays in memory for this page session.
 const tutorialShelf = {
     id: 'tutorial-shelf-1',
     name: 'Shelf 1',
@@ -120,6 +128,7 @@ let tutorialComplete = false;
 let expandedRackId: string | null = null;
 let expandedBoxId: string | null = null;
 
+/** Escapes a supplied string for HTML text or quoted attributes and returns the safe markup value. */
 function escapeHtml(value: string): string {
     return value.replace(/[&<>"']/g, character => ({
         '&': '&amp;',
@@ -130,22 +139,27 @@ function escapeHtml(value: string): string {
     })[character]!);
 }
 
+/** Takes a nonempty array and returns one randomly selected item. */
 function choose<T>(items: T[]): T {
     return items[Math.floor(Math.random() * items.length)]!;
 }
 
+/** Takes no arguments and returns all practice boxes paired with their containing racks. */
 function getBoxes(): { rack: TutorialRack; box: TutorialBox }[] {
     return tutorialShelf.racks.flatMap(rack => rack.boxes.map(box => ({ rack, box })));
 }
 
+/** Takes no arguments and returns all practice samples paired with their containing racks and boxes. */
 function getSamples(): { rack: TutorialRack; box: TutorialBox; sample: TutorialSample }[] {
     return getBoxes().flatMap(({ rack, box }) => box.samples.map(sample => ({ rack, box, sample })));
 }
 
+/** Converts a sample's one-based row and column into a position label such as A1 and returns it. */
 function samplePosition(sample: TutorialSample): string {
     return `${String.fromCharCode(64 + sample.row)}${sample.column}`;
 }
 
+/** Takes no arguments, chooses a target for the current level and resets question timing and selection, and returns nothing. */
 function startQuestion(): void {
     if (currentLevel === 1) {
         const rack = choose(tutorialShelf.racks);
@@ -179,6 +193,7 @@ function startQuestion(): void {
     expandedBoxId = null;
 }
 
+/** Takes no arguments, resets tutorial progress and total timing and starts a level-one question, and returns nothing. */
 export function startTrainingTutorial(): void {
     currentLevel = 1;
     wrongAnswersThisLevel = 0;
@@ -189,6 +204,7 @@ export function startTrainingTutorial(): void {
     startQuestion();
 }
 
+/** Checks the supplied target id, updates feedback and level progress when the tutorial is active, and returns nothing. */
 export function answerTrainingTarget(targetId: string): void {
     if (!currentQuestion || tutorialComplete) return;
     selectedTargetId = targetId;
@@ -212,6 +228,7 @@ export function answerTrainingTarget(targetId: string): void {
         return;
     }
 
+    // Three misses within one level restart at L1; the overall tutorial timer keeps running.
     wrongAnswersThisLevel++;
     if (wrongAnswersThisLevel === 3) {
         feedbackKind = 'progress';
@@ -226,22 +243,27 @@ export function answerTrainingTarget(targetId: string): void {
     feedbackMessage = `Not quite. ${wrongAnswersThisLevel} of 3 misses at this level. Try again.`;
 }
 
+/** Toggles expansion of the supplied rack id and closes any expanded box; returns nothing. */
 export function toggleTrainingRack(rackId: string): void {
     expandedRackId = expandedRackId === rackId ? null : rackId;
     expandedBoxId = null;
 }
 
+/** Toggles expansion of the supplied box id; returns nothing. */
 export function toggleTrainingBox(boxId: string): void {
     expandedBoxId = expandedBoxId === boxId ? null : boxId;
 }
 
+/** Returns the feedback CSS suffix for the supplied target id, or an empty string outside incorrect-answer feedback. */
 function targetClass(targetId: string): string {
     if (feedbackKind !== 'incorrect' || !selectedTargetId) return '';
     if (selectedTargetId === targetId) return ' is-incorrect';
     return currentQuestion?.targetId === targetId ? ' is-correct' : '';
 }
 
+/** Takes a practice box and its rack and returns sample-grid HTML with selectable occupied positions. */
 function renderSampleGrid(box: TutorialBox, rack: TutorialRack): string {
+    // Use the shared model's box dimensions so empty cells preserve the real freezer's position grid.
     const samplesByPosition = new Map(box.samples.map(sample => [`${sample.row}-${sample.column}`, sample]));
     const boxColor = getBoxColor(box, rack);
     let cells = '';
@@ -259,11 +281,13 @@ function renderSampleGrid(box: TutorialBox, rack: TutorialRack): string {
     return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${getReadableTextColor(boxColor)}">${cells}</div>`;
 }
 
+/** Takes a box and its rack and returns a valid box color, falling back to the rack color and then white. */
 function getBoxColor(box: TutorialBox, rack: TutorialRack): string {
     if (isHexColor(box.color)) return box.color;
     return isHexColor(rack.color) ? rack.color : '#FFFFFF';
 }
 
+/** Takes a box and its rack and returns an answer button at L2 or an expansion button at L3. */
 function renderBox(box: TutorialBox, rack: TutorialRack): string {
     const boxColor = getBoxColor(box, rack);
     const boxForeground = getReadableTextColor(boxColor);
@@ -275,6 +299,7 @@ function renderBox(box: TutorialBox, rack: TutorialRack): string {
     return `<button type="button" class="tutorial-box-toggle${isExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-toggle-box="${escapeHtml(box.id)}" aria-expanded="${isExpanded}">${isExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>`;
 }
 
+/** Takes a practice rack and returns its answer-button or expandable contents HTML for the current level. */
 function renderRack(rack: TutorialRack): string {
     const isExpanded = expandedRackId === rack.id;
     const contents = currentLevel > 1 && isExpanded
@@ -305,7 +330,9 @@ function renderRack(rack: TutorialRack): string {
     `;
 }
 
+/** Takes a practice rack and returns its box-slot grid HTML plus any expanded sample details. */
 function renderBoxGrid(rack: TutorialRack): string {
+    // Render every shared rack-grid slot, including empty ones, to retain physical box positions.
     const boxesByPosition = new Map(rack.boxes.map(box => [`${box.row}-${box.column}`, box]));
     let cells = '';
     for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.rackRows; row++) {
@@ -325,10 +352,12 @@ function renderBoxGrid(rack: TutorialRack): string {
     return `<div class="tutorial-boxes">${cells}</div>${details}`;
 }
 
+/** Checks an optional color string and returns whether it is a six-digit hexadecimal color. */
 function isHexColor(value: string | undefined): value is string {
     return value !== undefined && /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
+/** Takes a valid six-digit hex color and returns dark or white text using a weighted brightness threshold of 150. */
 function getReadableTextColor(hexColor: string): string {
     const red = parseInt(hexColor.slice(1, 3), 16);
     const green = parseInt(hexColor.slice(3, 5), 16);
@@ -336,6 +365,7 @@ function getReadableTextColor(hexColor: string): string {
     return (red * 299 + green * 587 + blue * 114) / 1000 > 150 ? '#18334d' : '#ffffff';
 }
 
+/** Takes no arguments and returns the practice freezer HTML with racks and their expanded contents. */
 function renderTutorialLayout(): string {
     return `
         <section class="tutorial-freezer" aria-label="Tutorial freezer">
@@ -350,6 +380,7 @@ function renderTutorialLayout(): string {
     `;
 }
 
+/** Takes no arguments and returns three level indicators reflecting the current stage and completion state. */
 function renderLevelProgress(): string {
     return [
         { level: 1, title: 'Find the rack' },
@@ -362,6 +393,7 @@ function renderLevelProgress(): string {
     }).join('');
 }
 
+/** Takes no arguments and returns tutorial HTML, starting a question if needed and showing completion when finished. */
 export function TutorialTrainingModeView(): string {
     if (!currentQuestion) startQuestion();
 

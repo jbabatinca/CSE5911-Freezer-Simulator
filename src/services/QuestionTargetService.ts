@@ -1,7 +1,8 @@
+/** QuestionTargetService.ts - lists and resolves layout targets for question creation and answer checking without storage access. */
 import type { QuestionSetQuestion, QuestionTargetType, ResolvedQuestionTarget } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 
-/** Shared by the admin target picker and user answer checking. Does not access storage. */
+/** Takes a saved layout and target type and returns matching rack, occupied box, or assigned sample-position targets. */
 export function getQuestionTargets(layout: SavedLayout, targetType: QuestionTargetType): ResolvedQuestionTarget[] {
     const targets: ResolvedQuestionTarget[] = [];
     const samples = new Map((layout.freezerData.samples ?? []).map(sample => [sample.id, sample.name]));
@@ -23,6 +24,7 @@ export function getQuestionTargets(layout: SavedLayout, targetType: QuestionTarg
                 } else if (targetType === 'sample') {
                     for (const position of box.positions) {
                         if (!position.sampleId) continue;
+                        // Sample targets use position ids so repeated specimens at different locations remain distinct.
                         targets.push({
                             ...location, id: position.id, targetType, boxId: box.id,
                             label: `${samples.get(position.sampleId) ?? position.sampleId} / ${boxPath} / ${position.label}`,
@@ -35,7 +37,7 @@ export function getQuestionTargets(layout: SavedLayout, targetType: QuestionTarg
     return targets;
 }
 
-/** Returns null for deleted, empty, foreign-layout, or wrong-type targets. */
+/** Takes a layout and question target type/id and returns the matching target, or null when it is unavailable. */
 export function resolveQuestionTarget(
     layout: SavedLayout,
     question: Pick<QuestionSetQuestion, 'targetType' | 'targetId'>,
