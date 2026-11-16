@@ -1,3 +1,8 @@
+/**
+ * NewLayoutModal.ts - renders the modal for creating a layout or uploading one.
+ * Button actions are handled by the app controller.
+ */
+/** Takes no arguments; returns the new-layout modal's HTML markup. */
 export function NewLayoutModal(): string {
     return `
         <div class="modal-overlay" id="new-layout-modal">
