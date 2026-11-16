@@ -1,3 +1,12 @@
+/**
+ * AdminModeHomeView.ts - home screen shown after a successful admin login.
+ */
+
+/**
+ * Renders the Admin Mode landing page with buttons for Configuration Mode,
+ * Question Set Creator Mode, and Progress History. Takes no arguments and
+ * returns an HTML string; button clicks are handled in App.ts by element id.
+ */
 export function AdminModeHomeView(): string {
     return `
     <div class="mode-home-view">

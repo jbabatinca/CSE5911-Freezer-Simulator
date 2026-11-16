@@ -1,3 +1,11 @@
+/**
+ * App.ts - the main application controller and the biggest file in the UI.
+ * App() draws the whole screen for the current Mode (see state/modeState.ts) into the
+ * #app element, then attaches click/input handlers to the freshly drawn elements.
+ * Pattern used throughout: change some state -> call render() -> the page is rebuilt.
+ * Buttons are found by element id (e.g. "btn-add-shelf") or data-* attribute; ids that
+ * carry a payload use a prefix, e.g. "btn-toggle-shelf-<id>" or "btn-add-box-<row>-<col>".
+ */
 import {getCurrentMode, setMode, getShowAdminPasswordModal, setShowAdminPasswordModal, getShowAdminSettingsModal, setShowAdminSettingsModal, goBack } from '../state/modeState.js';
 import { HomeView } from './HomeView.js';
 import { AdminModeHomeView } from './AdminModeHomeView.js';
@@ -44,8 +52,16 @@ import { validateFreezerLayout } from '../services/LayoutValidator.js';
 import { FreezerEditor } from './FreezerEditor.js';
 import { ProgressHistoryView } from './ProgressHistoryView.js';
 import { clearAttempts } from '../services/AttemptHistoryService.js';
+import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 import { searchLayouts } from '../services/LayoutSearchService.js';
 
+/**
+ * Opens a small modal <dialog> asking the user to type a name (used for renaming and naming new items).
+ * @param title heading text; @param label text for the input label; @param submitLabel text on the save button
+ * @param initialValue pre-filled (and pre-selected) text, default empty
+ * @returns a Promise resolving to the trimmed name, or null if the user cancels or submits an empty name.
+ * A custom dialog is used instead of window.prompt() so it can be styled and made accessible.
+ */
 function requestName(title: string, label: string, submitLabel: string, initialValue = ''): Promise<string | null> {
     return new Promise(resolve => {
         const dialog = document.createElement('dialog');
@@ -83,12 +99,18 @@ function requestName(title: string, label: string, submitLabel: string, initialV
         if (initialValue) input.select();
     });
 }
-import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 
-
+/**
+ * Starts the app: loads saved auth state, draws the first screen, and starts the
+ * timer that keeps a running question set's countdown live.
+ * Takes no arguments and returns nothing. Does nothing if there is no #app element.
+ * Everything else (render, attachEventListeners) is nested here so it can share
+ * the `app` element and the selected-question-set variable.
+ */
 export function App(): void {
     const app = document.getElementById('app');
     if (!app) return;
+    // Which saved question set the user has opened (null = none). Only lives for this session.
     let selectedUserQuestionSetId: string | null = null;
     let searchLayout: SavedLayout | null = null;
     let searchMode: 'configuration' | 'freezer-layouts' | null = null;
@@ -100,6 +122,7 @@ export function App(): void {
     render();
 
     // Keeps the custom-training countdown live and restarts the set when it expires.
+    // Polls every 250 ms; only re-renders when refreshQuestionSetTimer() reports a change.
     window.setInterval(() => {
         if (getCurrentMode() !== 'question-set-user') return;
         if (refreshQuestionSetTimer()) {
@@ -108,6 +131,8 @@ export function App(): void {
         }
     }, 250);
 
+    // Rebuilds the entire page HTML for the current mode and re-attaches listeners.
+    // The whole #app is replaced each time, so listeners must be re-added every render.
     function render(): void {
         if (!app) return;
         const mode = getCurrentMode();
@@ -131,6 +156,8 @@ export function App(): void {
         }
 
         // Show content based on the current mode
+        // 'configuration' only renders for an authenticated admin; 'training' shows the
+        // question-set creator for admins and the tutorial for everyone else.
         if (mode === 'home') {
             html += HomeView();
         } else if (mode === 'admin-home') {
@@ -164,6 +191,10 @@ export function App(): void {
         attachEventListeners();
     }
 
+    // Wires up every button/input on the page that was just rendered. Each handler
+    // follows: read the clicked element -> update state or the layout -> render().
+    // Sections below: home, navigation, login modals, admin/user home, question-set
+    // run and creator, tutorial, layout dashboard, then editor (shelves, racks, boxes, samples).
     function attachEventListeners(): void {
         // Keep the admin's draft name through renders caused by searching or editing.
         const layoutNameInput = document.getElementById('layout-name-input') as HTMLInputElement | null;
@@ -301,6 +332,7 @@ export function App(): void {
             });
         }
 
+        // Admin login: on a correct password go to admin home, otherwise show an inline error
         if (btnAdminLogin) {
             btnAdminLogin.addEventListener('click', () => {
                 if (authenticateAdmin(passwordInput.value)) {
@@ -333,6 +365,8 @@ export function App(): void {
             });
         }
 
+        // Change-password form validation order: all fields filled -> new passwords match
+        // -> current password correct. On success the modal closes after 1.5 s so the message is readable.
         if (btnChangePassword) {
             btnChangePassword.addEventListener('click', () => {
                 const currentPwdInput = document.getElementById('current-password-input') as HTMLInputElement;
@@ -418,6 +452,7 @@ export function App(): void {
             });
         }
 
+        // Progress History: open the screen (button exists on both admin and user home) and clear saved attempts
         document.getElementById('btn-user-history')?.addEventListener('click', () => {
             setMode('progress-history');
             render();
@@ -430,6 +465,7 @@ export function App(): void {
             }
         });
 
+        // User picks a saved question set from the dropdown; the Open button stays disabled until one is chosen.
         const userQuestionSetSelect = document.getElementById('user-question-set-select') as HTMLSelectElement | null;
         const btnOpenQuestionSet = document.getElementById('btn-open-question-set') as HTMLButtonElement | null;
         if (userQuestionSetSelect && btnOpenQuestionSet) {
@@ -442,10 +478,12 @@ export function App(): void {
                 startQuestionSetRun(selectedUserQuestionSetId);
                 setMode('question-set-user');
                 render();
+                // Move keyboard/screen-reader focus to the question after the page is rebuilt (accessibility)
                 document.getElementById('question-set-question-panel')?.focus();
             });
         }
 
+        // Running a question set: answer buttons carry the chosen target id in data-question-set-answer
         document.querySelectorAll('[data-question-set-answer]').forEach(button => {
             button.addEventListener('click', () => {
                 submitQuestionSetAnswer(button.getAttribute('data-question-set-answer') ?? '');
@@ -467,6 +505,7 @@ export function App(): void {
             document.getElementById('user-question-set-select')?.focus();
         });
 
+        // Expand/collapse racks and boxes in the freezer view shown while answering
         document.querySelectorAll('[data-question-set-toggle-rack]').forEach(button => {
             button.addEventListener('click', () => {
                 toggleUserQuestionSetRack(button.getAttribute('data-question-set-toggle-rack') ?? '');
@@ -490,6 +529,7 @@ export function App(): void {
             });
         }
 
+        // Question set creator (admin): create, edit, delete sets and edit their fields.
         const btnQuestionSetNew = document.getElementById('btn-question-set-new');
         if (btnQuestionSetNew) {
             btnQuestionSetNew.addEventListener('click', () => {
@@ -522,12 +562,15 @@ export function App(): void {
             });
         }
 
+        // Name/description update the draft on every keystroke WITHOUT re-rendering,
+        // so the input keeps focus and the cursor position while typing.
         const questionSetName = document.getElementById('question-set-name') as HTMLInputElement | null;
         questionSetName?.addEventListener('input', () => setQuestionSetName(questionSetName.value));
 
         const questionSetDescription = document.getElementById('question-set-description') as HTMLTextAreaElement | null;
         questionSetDescription?.addEventListener('input', () => setQuestionSetDescription(questionSetDescription.value));
 
+        // Changing the layout re-renders because the available targets depend on the chosen layout
         const questionSetLayout = document.getElementById('question-set-layout') as HTMLSelectElement | null;
         questionSetLayout?.addEventListener('change', () => {
             setQuestionSetLayout(questionSetLayout.value);
@@ -542,6 +585,7 @@ export function App(): void {
             });
         }
 
+        // Per-question controls; the question id is stored in the data-question-* attribute value.
         document.querySelectorAll('[data-question-toggle]').forEach(button => {
             button.addEventListener('click', () => {
                 toggleQuestionEditor(button.getAttribute('data-question-toggle') ?? '');
@@ -549,12 +593,14 @@ export function App(): void {
             });
         });
 
+        // Prompt text: no re-render, so typing isn't interrupted
         document.querySelectorAll('[data-question-prompt]').forEach(input => {
             input.addEventListener('input', () => {
                 updateQuestionInSet(input.getAttribute('data-question-prompt') ?? '', { prompt: (input as HTMLInputElement).value });
             });
         });
 
+        // Target type (shelf/rack/box...) changes which targets can be picked, so re-render
         document.querySelectorAll('[data-question-type]').forEach(select => {
             select.addEventListener('change', () => {
                 updateQuestionInSet(select.getAttribute('data-question-type') ?? '', {
@@ -570,6 +616,7 @@ export function App(): void {
             });
         });
 
+        // Reorder: data-question-move is "up" or "down"; the question id is in data-question-id
         document.querySelectorAll('[data-question-move]').forEach(button => {
             button.addEventListener('click', () => {
                 moveQuestionInSet(button.getAttribute('data-question-id') ?? '', button.getAttribute('data-question-move') === 'up' ? -1 : 1);
@@ -592,6 +639,7 @@ export function App(): void {
             });
         }
 
+        // Tutorial training (non-admin "training" mode): click a freezer target to answer the current question
         document.querySelectorAll('[data-training-target]').forEach(button => {
             button.addEventListener('click', () => {
                 answerTrainingTarget(button.getAttribute('data-training-target') ?? '');
@@ -655,6 +703,9 @@ export function App(): void {
         }
 
         // Configuration mode - Upload button
+        // Flow: pick a .json file -> parse -> validate against the schema (first 5 errors shown)
+        // -> wrap as a SavedLayout with a fresh id and timestamps -> open in the editor.
+        // It is NOT saved to localStorage until the user clicks Save in the editor.
         const btnUpload = document.getElementById('btn-upload');
         if (btnUpload) {
             btnUpload.addEventListener('click', () => {
@@ -707,6 +758,7 @@ export function App(): void {
 
 
         // Configuration mode - Save button in FreezerEditor
+        // Saves the layout being edited to localStorage via StorageService (falls back to "Unnamed Layout" if the name is blank).
         const btnSave = document.getElementById('btn-save');
         if (btnSave) {
             btnSave.addEventListener('click', () => {
@@ -739,6 +791,7 @@ export function App(): void {
         }
 
         // FreezerEditor - Download button
+        // Downloads only freezerData (not the id/timestamps) as "<layout name>.json", so it can be re-uploaded later.
         const btnDownload = document.getElementById('btn-download');
         if (btnDownload) {
             btnDownload.addEventListener('click', () => {
@@ -759,7 +812,9 @@ export function App(): void {
             });
         }
 
-            // FreezerEditor - Export to PDF button
+        // FreezerEditor - Export to PDF button
+        // Renders a read-only, print-friendly copy (exportView: true) into a temporary #print-root
+        // div and opens the browser print dialog (user chooses "Save as PDF"). The div is removed after printing.
         const btnExportPdf = document.getElementById('btn-export-pdf');
         if (btnExportPdf) {
             btnExportPdf.addEventListener('click', () => {
@@ -800,6 +855,7 @@ export function App(): void {
             });
         }
         // Configuration mode - Any New Layout button (multiple could exist)
+        // [id^="..."] matches every element whose id STARTS WITH the prefix.
         document.querySelectorAll('[id^="btn-add-freezer"]').forEach(btn => {
         btn.addEventListener('click', () => {
             openNewLayoutModal();
@@ -808,6 +864,7 @@ export function App(): void {
         });
 
         // Configuration mode - Click on existing layout to open in editor
+        // Layout cards have id "layout-<layoutId>"; the id after the prefix is looked up in storage.
         document.querySelectorAll('.layout-button[id^="layout-"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const layoutId = btn.id.replace('layout-', '');
@@ -831,6 +888,7 @@ export function App(): void {
         }
 
         // Toggle Shelf
+        // Only one shelf is expanded at a time (expanded ids live in state/editorState.ts); clicking the open one collapses it.
         document.querySelectorAll('[id^="btn-toggle-shelf-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const shelfId = btn.id.replace('btn-toggle-shelf-', '');
@@ -841,6 +899,7 @@ export function App(): void {
         });
 
         // Remove Shelf
+        // The id suffix here is the shelf's INDEX in the shelves array, not its id.
         document.querySelectorAll('[id^="btn-remove-shelf-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const index = parseInt(btn.id.replace('btn-remove-shelf-', ''));
@@ -852,6 +911,7 @@ export function App(): void {
         });
 
         // ===== RACK BUTTONS =====
+        // Racks are added to whichever shelf is currently expanded.
         const btnAddRack = document.getElementById('btn-add-rack');
         if (btnAddRack) {
             btnAddRack.addEventListener('click', () => {
@@ -873,6 +933,7 @@ export function App(): void {
             });
         });
 
+        // Rename Rack (asks for the new name, then auto-saves the layout)
         document.querySelectorAll('[id^="btn-rename-rack-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -892,6 +953,9 @@ export function App(): void {
             });
         });
 
+        // Color picker buttons for racks and boxes. Attributes: data-layout-color-kind ("rack" | "box"),
+        // data-layout-color-id (the item's id), data-layout-color-value (a hex color, or "inherit" for boxes
+        // meaning "use the rack's color"). Auto-saves the layout.
         document.querySelectorAll('[data-layout-color-kind]').forEach(button => {
             button.addEventListener('click', () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -915,6 +979,7 @@ export function App(): void {
         });
 
         // Remove Rack
+        // The id suffix is the rack's index within the expanded shelf.
         document.querySelectorAll('[id^="btn-remove-rack-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const index = parseInt(btn.id.replace('btn-remove-rack-', ''));
@@ -933,6 +998,8 @@ export function App(): void {
 
         // ===== BOX BUTTONS =====
         // Add Box
+        // Button id is "btn-add-box-<row>-<column>" (the empty slot's grid position). FreezerService works with
+        // array indexes, so the expanded shelf/rack ids are converted to indexes first.
         document.querySelectorAll('[id^="btn-add-box-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-box-', '').split('-');
@@ -965,6 +1032,7 @@ export function App(): void {
             });
         });
 
+        // Rename Box (asks for the new name, then auto-saves the layout)
         document.querySelectorAll('[id^="btn-rename-box-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -986,6 +1054,7 @@ export function App(): void {
         });
 
         // Remove Box
+        // Button id is "btn-remove-box-<row>-<column>"; asks for confirmation because the box's samples are deleted too.
         document.querySelectorAll('[id^="btn-remove-box-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const coords = btn.id.replace('btn-remove-box-', '').split('-');
@@ -1010,6 +1079,7 @@ export function App(): void {
 
         // ===== SAMPLE BUTTONS =====
         // Add Sample
+        // Button id is "btn-add-sample-<boxRow>-<boxCol>-<sampleRow>-<sampleCol>": which box slot, then which cell inside the box.
         document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-sample-', '').split('-');
@@ -1037,6 +1107,7 @@ export function App(): void {
             });
         });
 
+        // Assign a new specimen to an existing empty position (suffix is the position id)
         document.querySelectorAll('[id^="btn-assign-specimen-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -1051,6 +1122,7 @@ export function App(): void {
             });
         });
 
+        // Rename a specimen (suffix is the sample id; falls back to showing the id if the sample record is missing)
         document.querySelectorAll('[id^="btn-rename-sample-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -1068,6 +1140,9 @@ export function App(): void {
         });
 
         // Remove Sample
+        // The id suffix is the position id. Needs the expanded shelf, rack and box to find which slot to remove from.
+        // Note: unlike the other editor actions, this one does not call saveLayout(), so the removal is
+        // only kept once the user clicks Save.
         document.querySelectorAll('[id^="btn-remove-sample-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const positionId = btn.id.replace('btn-remove-sample-', '');

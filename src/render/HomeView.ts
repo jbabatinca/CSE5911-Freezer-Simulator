@@ -1,3 +1,12 @@
+/**
+ * HomeView.ts - the app's landing page, shown first and via the Home button.
+ */
+
+/**
+ * Renders the welcome page with the Admin Mode and User Mode buttons.
+ * Takes no arguments and returns an HTML string. Clicks are handled in App.ts:
+ * Admin Mode opens the password modal, User Mode goes straight to user home.
+ */
 export function HomeView(): string {
     return `
     <div class="home-view">
