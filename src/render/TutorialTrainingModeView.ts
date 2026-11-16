@@ -106,6 +106,37 @@ const tutorialShelf = {
                     ]
                 }
             ]
+        },
+        {
+            id: 'tutorial-rack-3',
+            name: 'Project 3',
+            color: '#318272',
+            boxes: [
+                {
+                    id: 'tutorial-box-5',
+                    name: 'P3B1',
+                    row: 1,
+                    column: 1,
+                    color: '#5997bf',
+                    samples: [
+                        { id: 'tutorial-sample-3001', name: 'Sample 3001', row: 1, column: 2 },
+                        { id: 'tutorial-sample-3002', name: 'Sample 3002', row: 3, column: 4 },
+                        { id: 'tutorial-sample-3003', name: 'Sample 3003', row: 7, column: 5 }
+                    ]
+                },
+                {
+                    id: 'tutorial-box-6',
+                    name: 'P3B2',
+                    row: 1,
+                    column: 2,
+                    color: '#c77b8f',
+                    samples: [
+                        { id: 'tutorial-sample-3004', name: 'Sample 3004', row: 2, column: 2 },
+                        { id: 'tutorial-sample-3005', name: 'Sample 3005', row: 5, column: 6 },
+                        { id: 'tutorial-sample-3006', name: 'Sample 3006', row: 9, column: 8 }
+                    ]
+                }
+            ]
         }
     ] satisfies TutorialRack[]
 };
@@ -117,6 +148,9 @@ const levels = [
 ];
 
 let currentLevel: TutorialLevel = 1;
+// Random selection allows targets to repeat within a level.
+const QUESTIONS_PER_LEVEL = 3;
+let questionsAnsweredThisLevel = 0;
 let wrongAnswersThisLevel = 0;
 let currentQuestion: TutorialQuestion | null = null;
 let selectedTargetId: string | null = null;
@@ -196,6 +230,7 @@ function startQuestion(): void {
 /** Takes no arguments, resets tutorial progress and total timing and starts a level-one question, and returns nothing. */
 export function startTrainingTutorial(): void {
     currentLevel = 1;
+    questionsAnsweredThisLevel = 0;
     wrongAnswersThisLevel = 0;
     tutorialStartedAt = Date.now();
     feedbackMessage = '';
@@ -213,7 +248,8 @@ export function answerTrainingTarget(targetId: string): void {
     if (targetId === currentQuestion.targetId) {
         const finishedLevel = currentLevel;
         wrongAnswersThisLevel = 0;
-        if (finishedLevel === 3) {
+        questionsAnsweredThisLevel++;
+        if (questionsAnsweredThisLevel === QUESTIONS_PER_LEVEL && finishedLevel === 3) {
             tutorialComplete = true;
             feedbackKind = 'complete';
             const totalElapsed = ((Date.now() - tutorialStartedAt) / 1000).toFixed(1);
@@ -221,9 +257,14 @@ export function answerTrainingTarget(targetId: string): void {
             return;
         }
 
-        currentLevel = (finishedLevel + 1) as TutorialLevel;
         feedbackKind = 'correct';
-        feedbackMessage = `Correct. ${currentQuestion.address}. Answered in ${elapsed} seconds. Advancing to L${currentLevel}.`;
+        if (questionsAnsweredThisLevel === QUESTIONS_PER_LEVEL) {
+            currentLevel = (finishedLevel + 1) as TutorialLevel;
+            questionsAnsweredThisLevel = 0;
+            feedbackMessage = `Correct. ${currentQuestion.address}. Answered in ${elapsed} seconds. Advancing to L${currentLevel}.`;
+        } else {
+            feedbackMessage = `Correct. ${currentQuestion.address}. Answered in ${elapsed} seconds.`;
+        }
         startQuestion();
         return;
     }
@@ -234,6 +275,7 @@ export function answerTrainingTarget(targetId: string): void {
         feedbackKind = 'progress';
         feedbackMessage = `Three incorrect answers. Returning to L1. The answer was ${currentQuestion.address}.`;
         currentLevel = 1;
+        questionsAnsweredThisLevel = 0;
         wrongAnswersThisLevel = 0;
         startQuestion();
         return;
@@ -415,6 +457,7 @@ export function TutorialTrainingModeView(): string {
             ` : `
                 <section id="training-question-panel" class="training-question" tabindex="-1" aria-live="polite">
                     <p class="training-prompt">LEVEL L${currentLevel} · ${['Find the rack', 'Find the box', 'Find the sample'][currentLevel - 1]!.toUpperCase()}</p>
+                    <p class="training-prompt-detail">Question ${questionsAnsweredThisLevel + 1} of ${QUESTIONS_PER_LEVEL}</p>
                     <h2>${escapeHtml(currentQuestion!.prompt)}</h2>
                     <p class="training-prompt-detail">${escapeHtml(currentQuestion!.detail)}</p>
                     ${feedbackMessage ? `<p class="training-feedback ${feedbackKind === 'incorrect' ? 'is-incorrect' : 'is-correct'}" role="status">${escapeHtml(feedbackMessage)}</p>` : ''}

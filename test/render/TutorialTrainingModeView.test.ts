@@ -1,3 +1,4 @@
+/** Tests tutorial progression, feedback, resets, and practice freezer rendering. */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   TutorialTrainingModeView,
@@ -17,7 +18,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
+
+function answerLevel(targetId: string): void {
+  for (let question = 0; question < 3; question++) answerTrainingTarget(targetId);
+}
 
 describe('TutorialTrainingModeView - level flow', () => {
   it('should start at level 1 with a rack question', () => {
@@ -27,12 +33,32 @@ describe('TutorialTrainingModeView - level flow', () => {
     expect(html).toContain('0</strong> / 3 misses at L1');
   });
 
-  it('should advance to level 2 after a correct rack answer', () => {
+  it('advances after three correct questions in each level and completes only after nine', () => {
+    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
     answerTrainingTarget('tutorial-rack-1');
-    const html = TutorialTrainingModeView();
-    expect(html).toContain('L2 · FIND THE BOX');
-    expect(html).toContain('Find P1B1');
-    expect(html).toContain('Advancing to L2');
+    expect(TutorialTrainingModeView()).toContain('L1 · FIND THE RACK');
+    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
+    answerTrainingTarget('tutorial-rack-1');
+    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
+    answerTrainingTarget('tutorial-rack-1');
+    expect(TutorialTrainingModeView()).toContain('L2 · FIND THE BOX');
+    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
+    expect(TutorialTrainingModeView()).toContain('Advancing to L2');
+    answerTrainingTarget('tutorial-box-1');
+    answerTrainingTarget('tutorial-box-1');
+    expect(TutorialTrainingModeView()).toContain('L2 · FIND THE BOX');
+    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
+    answerTrainingTarget('tutorial-box-1');
+    expect(TutorialTrainingModeView()).toContain('L3 · FIND THE SAMPLE');
+    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
+    answerTrainingTarget('tutorial-sample-1001');
+    answerTrainingTarget('tutorial-sample-1001');
+    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
+    expect(TutorialTrainingModeView()).not.toContain('Tutorial complete');
+    answerTrainingTarget('tutorial-sample-1001');
+    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+    expect(TutorialTrainingModeView()).toContain('Tutorial completed in');
+    expect(TutorialTrainingModeView()).toContain('id="btn-tutorial-restart"');
   });
 
   it('should mark the wrong rack and the correct rack after an incorrect answer', () => {
@@ -45,44 +71,103 @@ describe('TutorialTrainingModeView - level flow', () => {
   });
 
   it('should return to level 1 after three misses at a level', () => {
-    answerTrainingTarget('tutorial-rack-1'); // now at L2
+    answerLevel('tutorial-rack-1');
+    answerTrainingTarget('tutorial-box-1');
+    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
     answerTrainingTarget('tutorial-box-2');
     answerTrainingTarget('tutorial-box-2');
     answerTrainingTarget('tutorial-box-2');
     const html = TutorialTrainingModeView();
     expect(html).toContain('Three incorrect answers. Returning to L1.');
     expect(html).toContain('L1 · FIND THE RACK');
+    expect(html).toContain('Question 1 of 3');
+    expect(html).toContain('0</strong> / 3 misses at L1');
+    answerTrainingTarget('tutorial-rack-1');
+    expect(TutorialTrainingModeView()).toContain('L1 · FIND THE RACK');
+    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
   });
 
-  it('should complete the tutorial after a correct sample answer at level 3', () => {
+  it('keeps elapsed-time feedback and resets misses after a correct answer', () => {
+    vi.useFakeTimers();
+    startTrainingTutorial();
+    answerTrainingTarget('tutorial-rack-2');
+    vi.advanceTimersByTime(2500);
     answerTrainingTarget('tutorial-rack-1');
-    answerTrainingTarget('tutorial-box-1');
-    answerTrainingTarget('tutorial-sample-1001');
-    const html = TutorialTrainingModeView();
-    expect(html).toContain('Tutorial complete');
-    expect(html).toContain('Tutorial completed in');
-    expect(html).toContain('id="btn-tutorial-restart"');
+    expect(TutorialTrainingModeView()).toContain('Answered in 2.5 seconds.');
+    expect(TutorialTrainingModeView()).toContain('0</strong> / 3 misses at L1');
+    vi.advanceTimersByTime(1000);
+    answerTrainingTarget('tutorial-rack-1');
+    expect(TutorialTrainingModeView()).toContain('Answered in 1.0 seconds.');
   });
 
   it('should restart from level 1 after the tutorial is complete', () => {
-    answerTrainingTarget('tutorial-rack-1');
-    answerTrainingTarget('tutorial-box-1');
-    answerTrainingTarget('tutorial-sample-1001');
+    answerLevel('tutorial-rack-1');
+    answerLevel('tutorial-box-1');
+    answerLevel('tutorial-sample-1001');
     startTrainingTutorial();
     const html = TutorialTrainingModeView();
     expect(html).not.toContain('Tutorial complete');
     expect(html).toContain('L1 · FIND THE RACK');
+    expect(html).toContain('Question 1 of 3');
+    expect(html).toContain('0</strong> / 3 misses at L1');
   });
 });
 
 describe('TutorialTrainingModeView - what each level shows', () => {
+  it('renders the third rack and allows its rack, box, and sample targets to be answered', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    startTrainingTutorial();
+    let html = TutorialTrainingModeView();
+    expect(html).toContain('Find Project 3');
+    expect(html).toContain('data-training-target="tutorial-rack-3"');
+    expect(html).toContain('--tutorial-rack-color: #318272');
+
+    answerLevel('tutorial-rack-3');
+    toggleTrainingRack('tutorial-rack-3');
+    html = TutorialTrainingModeView();
+    expect(html).toContain('Find P3B2');
+    expect(html).toContain('data-training-target="tutorial-box-5"');
+    expect(html).toContain('data-training-target="tutorial-box-6"');
+    expect(html).toContain('2 / 16 boxes filled');
+
+    answerLevel('tutorial-box-6');
+    toggleTrainingRack('tutorial-rack-3');
+    toggleTrainingBox('tutorial-box-6');
+    html = TutorialTrainingModeView();
+    expect(html).toContain('Find Sample 3006');
+    expect(html).toContain('data-training-target="tutorial-sample-3004"');
+    expect(html).toContain('data-training-target="tutorial-sample-3005"');
+    expect(html).toContain('data-training-target="tutorial-sample-3006"');
+    expect(html).toContain('Sample 3006, position I8');
+    answerLevel('tutorial-sample-3006');
+    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+  });
+
+  it('selects and renders the third rack’s first box and its specimens', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.7);
+    startTrainingTutorial();
+    answerLevel('tutorial-rack-3');
+    toggleTrainingRack('tutorial-rack-3');
+    expect(TutorialTrainingModeView()).toContain('Find P3B1');
+    answerLevel('tutorial-box-5');
+    toggleTrainingRack('tutorial-rack-3');
+    toggleTrainingBox('tutorial-box-5');
+    const html = TutorialTrainingModeView();
+    expect(html).toContain('Find Sample 3001');
+    expect(html).toContain('data-training-target="tutorial-sample-3001"');
+    expect(html).toContain('data-training-target="tutorial-sample-3002"');
+    expect(html).toContain('data-training-target="tutorial-sample-3003"');
+    answerLevel('tutorial-sample-3001');
+    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+  });
+
   it('renders racks as color-coded cards and boxes in a 4x4 grid with empty slots', () => {
     const rackView = TutorialTrainingModeView();
     expect(rackView).toContain('style="--tutorial-rack-color: #2878b8"');
     expect(rackView).toContain('data-training-target="tutorial-rack-1"');
     expect(rackView).toContain('2 / 16 boxes filled');
 
-    answerTrainingTarget('tutorial-rack-1');
+    answerLevel('tutorial-rack-1');
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
     const root = document.createElement('div');
@@ -97,7 +182,7 @@ describe('TutorialTrainingModeView - what each level shows', () => {
   });
 
   it('should show boxes as plain buttons at level 2, without samples', () => {
-    answerTrainingTarget('tutorial-rack-1'); // now at L2
+    answerLevel('tutorial-rack-1');
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
     expect(html).toContain('data-training-target="tutorial-box-1"');
@@ -105,8 +190,8 @@ describe('TutorialTrainingModeView - what each level shows', () => {
   });
 
   it('should show the expanded 9x9 sample grid below the box grid at level 3', () => {
-    answerTrainingTarget('tutorial-rack-1');
-    answerTrainingTarget('tutorial-box-1'); // now at L3
+    answerLevel('tutorial-rack-1');
+    answerLevel('tutorial-box-1');
     toggleTrainingRack('tutorial-rack-1');
     toggleTrainingBox('tutorial-box-1');
     const html = TutorialTrainingModeView();
@@ -125,7 +210,7 @@ describe('TutorialTrainingModeView - what each level shows', () => {
   });
 
   it('should collapse a rack when it is toggled twice', () => {
-    answerTrainingTarget('tutorial-rack-1'); // now at L2
+    answerLevel('tutorial-rack-1');
     toggleTrainingRack('tutorial-rack-1');
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
