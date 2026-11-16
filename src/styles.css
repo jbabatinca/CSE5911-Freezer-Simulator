@@ -1,3 +1,6 @@
+/* styles.css - shared themes, navigation, freezer editors, training screens, and print layouts. */
+
+/* Theme variables: Light defaults and Dark overrides selected by the root data-theme attribute. */
 :root {
   color-scheme: light;
   --primary: #ba0c2f;
@@ -47,6 +50,7 @@
   --training-complete: #3f4443;
 }
 
+/* Page sizing and application header. */
 * {
   box-sizing: border-box;
 }
@@ -85,6 +89,7 @@ body {
   letter-spacing: -0.5px;
 }
 
+/* Light/Dark theme buttons and selected states. */
 .theme-control {
   display: flex;
   align-items: center;
@@ -127,6 +132,7 @@ body {
   background: var(--action-hover);
 }
 
+/* Shared typography, buttons, and keyboard focus indicators. */
 h1, h2, h3, h4, h5 {
   line-height: 1.25;
 }
@@ -165,6 +171,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline-offset: 3px;
 }
 
+/* Common screen panels. */
 .home-view, .mode-home-view, .training-view, .layout-dashboard, .freezer-editor {
   padding: 32px;
   border: 1px solid var(--border);
@@ -173,6 +180,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   box-shadow: 0 8px 28px rgb(33 51 75 / 5%);
 }
 
+/* Layout search controls, scrollable results, and selected freezer locations. */
 .layout-search {
   margin-block: 0 24px;
   padding: 16px;
@@ -338,6 +346,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   scroll-margin-block: 24px;
 }
 
+/* Landing pages and mode-selection buttons. */
 .home-view {
   padding: 72px 32px;
   border-top: 5px solid var(--action);
@@ -398,6 +407,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--success-background);
 }
 
+/* Navigation and saved-layout dashboard grid. */
 .navigation {
   display: flex;
   flex-wrap: wrap;
@@ -440,6 +450,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 400;
 }
 
+/* Modal overlays, password fields, and dialog controls. */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -481,6 +492,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--muted);
 }
 
+/* Destructive and add/remove editor actions. */
 .btn-delete, .btn-remove, .btn-remove-box, .btn-remove-sample {
   border-color: var(--border);
   color: var(--danger);
@@ -514,6 +526,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin-top: 12px;
 }
 
+/* Freezer, shelf, and horizontally scrolling rack layout. */
 .freezer {
   display: flex;
   flex-direction: column;
@@ -570,6 +583,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 14px;
 }
 
+/* Small-screen page, dashboard, and modal adjustments. */
 @media (max-width: 600px) {
   body {
     padding: 12px;
@@ -652,6 +666,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin: 0;
 }
 
+/* Editor box-slot grid: four columns mirror the rack geometry. */
 .freezer-editor .box-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(60px, 1fr));
@@ -734,6 +749,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 24px;
 }
 
+/* Expanded box details and nine-column sample positions. */
 .freezer-editor .box-details {
   margin-top: 16px;
   text-align: left;
@@ -781,6 +797,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   filter: brightness(0.88);
 }
 
+/* Name-entry dialog and form actions. */
 .name-entry-dialog {
   width: min(420px, calc(100vw - 32px));
   margin: auto;
@@ -831,6 +848,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text);
 }
 
+/* Shared training headings, layout choices, questions, scores, and answer feedback. */
 .training-view {
   max-width: 1100px;
   margin: 0 auto;
@@ -1029,6 +1047,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin-top: 18px;
 }
 
+/* Small-screen training headings and questions. */
 @media (max-width: 600px) {
   .training-view {
     margin: 16px auto;
@@ -1052,6 +1071,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
+/* Interactive training editor, box choices, and specimen answers. */
 .training-editor .training-question {
   max-width: none;
   margin: 16px 0;
@@ -1179,6 +1199,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin-top: 12px;
 }
 
+/* Keep training grid geometry while reducing cell widths on small screens. */
 @media (max-width: 600px) {
   .training-editor .box-grid {
     grid-template-columns: repeat(4, minmax(46px, 1fr));
@@ -1189,6 +1210,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
+/* Disabled layout access and compact rack/specimen editing controls. */
 #btn-freezer-layouts:disabled,
 #btn-freezer-layouts:disabled:hover {
   border-color: var(--border);
@@ -1233,6 +1255,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   line-height: 1;
 }
 
+/* Tutorial miss count, level progress, practice freezer, and completion panel. */
 .tutorial-training .tutorial-strikes {
   margin: 0;
   padding: 8px 12px;
@@ -1488,6 +1511,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin-top: 12px;
 }
 
+/* Custom question-set scores, status, countdown timer, and answer states. */
 .question-set-placeholder {
   border-top: 4px solid var(--primary);
 }
@@ -1576,6 +1600,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--danger);
 }
 
+/* Accessibility helper: hide visual content while retaining it for assistive technology. */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1587,6 +1612,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 0;
 }
 
+/* Saved item colors and the rack/box color-picker palette. */
 .rack.color-coded {
   border-color: var(--border);
   border-left: 6px solid var(--item-color);
@@ -1679,6 +1705,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 2px;
 }
 
+/* Small-screen tutorial progress, rack cards, and sample-grid sizing. */
 @media (max-width: 600px) {
   .tutorial-levels {
     grid-template-columns: 1fr;
@@ -1710,6 +1737,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
+/* User question-set launcher and shared creator form inputs. */
 .user-question-set-launcher {
   max-width: 560px;
   margin: 28px auto 0;
@@ -1763,6 +1791,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   cursor: not-allowed;
 }
 
+/* Admin question-set cards, metadata editor, collapsible questions, and validation feedback. */
 .question-set-list {
   display: grid;
   gap: 10px;
@@ -1959,6 +1988,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-top: 1px solid var(--border);
 }
 
+/* User preview of the questions in a saved set. */
 .user-question-set-view .user-question-list {
   display: grid;
   gap: 10px;
@@ -1984,6 +2014,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text);
 }
 
+/* Stack question-set metadata and cards below 700px. */
 @media (max-width: 700px) {
   .question-set-metadata,
   .question-set-question {
@@ -2004,6 +2035,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 }
 
+/* Physical freezer training layout: preserve four box columns and nine sample columns. */
 .question-set-run-view {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -2137,6 +2169,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   filter: brightness(0.96);
 }
 
+/* Compact physical freezer spacing on small screens. */
 @media (max-width: 600px) {
   .physical-freezer-layout .tutorial-freezer,
   .physical-freezer-layout .tutorial-shelf {
@@ -2259,6 +2292,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--surface-raised);
 }
 
+/* Print export: hide the app, use Light colors, and keep freezer shelves together. */
 @media print {
   .app-header,
   #app,

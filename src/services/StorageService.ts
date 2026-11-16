@@ -1,6 +1,8 @@
+/** StorageService.ts - reads and writes saved freezer layouts in browser localStorage. */
 import type { SavedLayout } from '../models/SavedLayout.js';
 
-// Get all saved layouts
+// The 'freezer-layouts' key holds a JSON array; parsing and storage errors propagate to callers.
+/** Takes no arguments and returns all saved layouts, or an empty array when the storage key is absent. */
 export function getAllLayouts(): SavedLayout[] {
   const stored = localStorage.getItem('freezer-layouts');
   const result = stored ? JSON.parse(stored) : [];
@@ -8,13 +10,13 @@ export function getAllLayouts(): SavedLayout[] {
 }
 
 
-// Get a single layout by ID
+/** Looks up the supplied layout id and returns the saved layout, or null if it is missing. */
 export function getLayout(id: string): SavedLayout | null {
     const layouts = getAllLayouts();
     return layouts.find(l => l.id === id) || null;
 }
 
-// Save or update a layout
+/** Stores the supplied layout, replacing any entry with the same id; returns nothing. */
 export function saveLayout(layout: SavedLayout): void {
     const layouts = getAllLayouts();
     const existing = layouts.findIndex(l => l.id === layout.id);
@@ -28,14 +30,15 @@ export function saveLayout(layout: SavedLayout): void {
     localStorage.setItem('freezer-layouts', JSON.stringify(layouts));
 }
 
-// Delete a layout
+/** Removes the layout matching the supplied id from storage; returns nothing, even if no entry matches. */
 export function deleteLayout(id: string): void {
     const layouts = getAllLayouts();
     const filtered = layouts.filter(l => l.id !== id);
     localStorage.setItem('freezer-layouts', JSON.stringify(filtered));
 }
 
-// Generate a unique ID for a new layout
+/** Takes no arguments and returns a 'layout-' id based on the current millisecond timestamp. */
 export function generateLayoutId(): string {
+    // Calls in the same millisecond can produce the same id; this is not a UUID generator.
     return 'layout-' + Date.now();
 }

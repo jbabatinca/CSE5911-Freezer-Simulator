@@ -1,3 +1,5 @@
+/** AdminPasswordModal.ts - renders the admin login dialog; App.ts handles authentication and button events. */
+/** Takes no arguments and returns password-dialog HTML with login, cancel, and initially hidden error controls. */
 export function AdminPasswordModal(): string {
   return `
     <div class="modal-overlay">
