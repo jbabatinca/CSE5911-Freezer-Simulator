@@ -91,6 +91,7 @@ export function App(): void {
     if (!app) return;
     let selectedUserQuestionSetId: string | null = null;
     let searchLayout: SavedLayout | null = null;
+    let searchMode: 'configuration' | 'freezer-layouts' | null = null;
     let layoutSearchQuery = '';
     let selectedSearchKey: string | null = null;
     let layoutSearchOpen = false;
@@ -110,14 +111,16 @@ export function App(): void {
     function render(): void {
         if (!app) return;
         const mode = getCurrentMode();
-        const currentSearchLayout = mode === 'freezer-layouts' ? getCurrentEditingLayout() : null;
-        if (mode !== 'freezer-layouts' || currentSearchLayout !== searchLayout) {
+        const isAdmin = isAdminAuthenticated();
+        const activeSearchMode = mode === 'freezer-layouts' || (mode === 'configuration' && isAdmin) ? mode : null;
+        const currentSearchLayout = activeSearchMode ? getCurrentEditingLayout() : null;
+        if (!activeSearchMode || activeSearchMode !== searchMode || currentSearchLayout !== searchLayout) {
+            searchMode = activeSearchMode;
             searchLayout = currentSearchLayout;
             layoutSearchQuery = '';
             selectedSearchKey = null;
             layoutSearchOpen = false;
         }
-        const isAdmin = isAdminAuthenticated();
         const showPasswordModal = getShowAdminPasswordModal();
         const showSettingsModal = getShowAdminSettingsModal();
         let html = '';
@@ -134,10 +137,8 @@ export function App(): void {
             html += AdminModeHomeView();
         } else if (mode === 'user-home') {
             html += UserModeHomeView();
-        } else if (mode === 'configuration' && isAdmin) {
-            html += ConfigurationModeView(false);
-        } else if (mode === 'freezer-layouts') {
-            html += ConfigurationModeView(true, {
+        } else if (activeSearchMode) {
+            html += ConfigurationModeView(activeSearchMode === 'freezer-layouts', {
                 searchQuery: layoutSearchQuery,
                 selectedSearchKey,
                 searchOpen: layoutSearchOpen,
@@ -164,6 +165,13 @@ export function App(): void {
     }
 
     function attachEventListeners(): void {
+        // Keep the admin's draft name through renders caused by searching or editing.
+        const layoutNameInput = document.getElementById('layout-name-input') as HTMLInputElement | null;
+        layoutNameInput?.addEventListener('input', () => {
+            const layout = getCurrentEditingLayout();
+            if (layout) layout.name = layoutNameInput.value;
+        });
+
         const searchToggle = document.getElementById('btn-toggle-layout-search');
         const searchPanel = document.getElementById('layout-search-panel');
         function setSearchOpen(open: boolean): void {

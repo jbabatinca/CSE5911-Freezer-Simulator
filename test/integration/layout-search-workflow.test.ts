@@ -4,7 +4,7 @@ import { FreezerEditor } from '../../src/render/FreezerEditor.js';
 import { deleteLayout, saveLayout } from '../../src/services/StorageService.js';
 import { switchToUserMode } from '../../src/state/authState.js';
 import { setExpandedShelfId } from '../../src/state/editorState.js';
-import { setCurrentEditingLayout } from '../../src/state/layoutState.js';
+import { getCurrentEditingLayout, setCurrentEditingLayout } from '../../src/state/layoutState.js';
 import { initializeMode, setShowAdminPasswordModal, setShowAdminSettingsModal } from '../../src/state/modeState.js';
 import { element, makeLayout, parseView } from '../helpers/questionSets.js';
 
@@ -25,7 +25,7 @@ function selectResult(type: string, id: string, layoutId = 'layout-1') {
   button!.click();
 }
 
-describe('Layout search application workflow', () => {
+describe.each(['user', 'admin'] as const)('Layout search application workflow (%s)', role => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
@@ -38,8 +38,15 @@ describe('Layout search application workflow', () => {
     document.body.innerHTML = '<main id="app"></main>';
     saveLayout(makeLayout());
     App();
-    click('#btn-user-mode');
-    click('#btn-freezer-layouts');
+    if (role === 'admin') {
+      click('#btn-admin-mode');
+      element<HTMLInputElement>(document, '#admin-password-input').value = '123456';
+      click('#btn-admin-login');
+      click('#btn-admin-configuration');
+    } else {
+      click('#btn-user-mode');
+      click('#btn-freezer-layouts');
+    }
   });
 
   afterEach(() => {
@@ -169,7 +176,13 @@ describe('Layout search application workflow', () => {
     search('serum');
     expect(document.querySelectorAll('[data-layout-search-key]')).toHaveLength(4);
     selectResult('sample', 'layout-2-position-2', 'layout-2');
-    expect(element(document, '.layout-name-display').textContent).toContain('Freezer layout-2');
+    if (role === 'admin') {
+      expect(element<HTMLInputElement>(document, '#layout-name-input').value).toBe('Freezer layout-2');
+      expect(document.querySelector('#btn-save')).not.toBeNull();
+    } else {
+      expect(element(document, '.layout-name-display').textContent).toContain('Freezer layout-2');
+      expect(document.querySelector('#btn-save')).toBeNull();
+    }
     expect(document.activeElement?.id).toBe('pos-layout-2-position-2');
     expect(element(document, '.layout-search-selection').textContent).toContain('Freezer layout-2 → Top shelf → Rack 2 → Box 2 → Position A1');
     expect(input().value).toBe('serum');
@@ -229,7 +242,7 @@ describe('Layout search application workflow', () => {
   it('resets dashboard search when leaving Layout View', () => {
     search('serum');
     click('#btn-back');
-    click('#btn-freezer-layouts');
+    click(role === 'admin' ? '#btn-admin-configuration' : '#btn-freezer-layouts');
     expect(input().value).toBe('');
     expect(document.querySelectorAll('[data-layout-search-key]')).toHaveLength(0);
   });
@@ -243,9 +256,55 @@ describe('Layout search application workflow', () => {
     expect(view.querySelector('.layout-search-results strong')?.textContent).toBe('Sample: <img src=x onerror=alert(1)>');
   });
 
-  it('keeps search out of admin editing and PDF export', () => {
+  it('includes search in both editors and keeps search out of PDF export', () => {
     const layout = makeLayout();
-    expect(parseView(FreezerEditor(layout)).querySelector('.layout-search')).toBeNull();
-    expect(parseView(FreezerEditor(layout, true, { exportView: true })).querySelector('.layout-search')).toBeNull();
+    for (const readOnly of [false, true]) {
+      expect(parseView(FreezerEditor(layout, readOnly)).querySelector('#btn-toggle-layout-search')).not.toBeNull();
+      expect(parseView(FreezerEditor(layout, readOnly, { exportView: true })).querySelector('.layout-search')).toBeNull();
+    }
   });
+
+  if (role === 'admin') {
+    it('preserves unsaved layout names and new shelves through searching and saves only when requested', () => {
+      click('#layout-layout-1');
+      const saved = localStorage.getItem('freezer-layouts');
+      const name = 'Draft "Research" freezer';
+      const nameInput = element<HTMLInputElement>(document, '#layout-name-input');
+      nameInput.value = name;
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+      click('#btn-add-shelf');
+      const shelf = getCurrentEditingLayout()!.freezerData.shelves[1]!;
+      search('shelf 2');
+      selectResult('shelf', shelf.id);
+      expect(element<HTMLInputElement>(document, '#layout-name-input').value).toBe(name);
+      expect(document.activeElement?.id).toBe(`shelf-${shelf.id}`);
+      expect(localStorage.getItem('freezer-layouts')).toBe(saved);
+      click('#btn-clear-layout-search');
+      search('draft');
+      selectResult('layout', 'layout-1');
+      expect(element(document, '.layout-search-target').id).toBe('freezer-title');
+      expect(localStorage.getItem('freezer-layouts')).toBe(saved);
+      click('#btn-save');
+      const stored = JSON.parse(localStorage.getItem('freezer-layouts')!);
+      expect(stored[0].name).toBe(name);
+      expect(stored[0].freezerData.shelves).toHaveLength(2);
+    });
+
+    it('returns to a read-only editor with search reset after switching from admin to user', () => {
+      search('serum');
+      selectResult('sample', 'layout-1-position-1');
+      click('#btn-back');
+      click('#btn-logout');
+      click('#btn-user-mode');
+      click('#btn-freezer-layouts');
+      expect(element(document, '#layout-search-panel').hidden).toBe(true);
+      expect(input().value).toBe('');
+      expect(document.querySelector('.layout-search-target')).toBeNull();
+      expect(document.querySelector('#btn-save')).toBeNull();
+      expect(document.querySelector('#layout-name-input')).toBeNull();
+      search('rack 2');
+      selectResult('rack', 'layout-1-rack-2');
+      expect(document.activeElement?.id).toBe('rack-layout-1-rack-2');
+    });
+  }
 });

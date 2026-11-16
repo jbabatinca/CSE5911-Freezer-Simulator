@@ -91,7 +91,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
   const expandedRackId = getExpandedRackId();
   const expandedBoxId = getExpandedBoxId();
   const searchQuery = options.searchQuery ?? '';
-  const searchResults = readOnly ? searchLayouts([layout], searchQuery) : [];
+  const searchResults = searchLayouts([layout], searchQuery);
   const selected = searchResults.find(result => result.key === options.selectedSearchKey);
 
   return `
@@ -100,24 +100,24 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
         <button id="btn-back-to-layouts" class="btn-back">← Back to Layouts</button>
 
         ${readOnly ? `
-          <span class="layout-name-display">${layout.name}</span>
+          <span class="layout-name-display">${escapeHtml(layout.name)}</span>
         ` : `
           <input
             type="text"
             id="layout-name-input"
-            value="${layout.name}"
+            value="${escapeHtml(layout.name)}"
             placeholder="Layout name"
             class="layout-name-input"
           />
           <button id="btn-save" class="btn-save">Save</button>
           <button id="btn-delete" class="btn-delete">Delete</button>
         `}
-        ${readOnly ? LayoutSearchButton(options.searchOpen) : ''}
+        ${LayoutSearchButton(options.searchOpen)}
         <button id="btn-download" class="btn-download">Download</button>
         <button id="btn-export-pdf" class="btn-download">Export to PDF</button>
       </div>
 
-      ${readOnly ? LayoutSearchView(searchQuery, searchResults, selected?.key ?? null, false, options.searchOpen) : ''}
+      ${LayoutSearchView(searchQuery, searchResults, selected?.key ?? null, false, options.searchOpen)}
 
       <div class="editor-content">
         <h2 id="freezer-title" tabindex="-1" class="${selected?.type === 'layout' ? 'layout-search-target' : ''}">${escapeHtml(layout.name)}</h2>

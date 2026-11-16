@@ -15,12 +15,9 @@ export function ConfigurationModeView(readOnly: boolean = false, options: Freeze
   if (editingLayout) {
     return FreezerEditor(editingLayout, readOnly, options);
   } else {
-    let html = LayoutDashboard(readOnly);
-    if (readOnly) {
-      const query = options.searchQuery ?? '';
-      html = LayoutDashboard(true, LayoutSearchButton(options.searchOpen),
-        LayoutSearchView(query, searchLayouts(getAllLayouts(), query), options.selectedSearchKey ?? null, true, options.searchOpen));
-    }
+    const query = options.searchQuery ?? '';
+    let html = LayoutDashboard(readOnly, LayoutSearchButton(options.searchOpen),
+      LayoutSearchView(query, searchLayouts(getAllLayouts(), query), options.selectedSearchKey ?? null, true, options.searchOpen));
     if (modalOpen && !readOnly) {
       html += NewLayoutModal();  // Add modal to the page
     }
