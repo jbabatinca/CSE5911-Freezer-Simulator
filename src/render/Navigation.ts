@@ -1,6 +1,11 @@
+/**
+ * Navigation.ts - renders navigation buttons appropriate to the current app mode.
+ * Button actions are handled by the app controller.
+ */
 import { isAdminAuthenticated } from '../state/authState.js';
 import type { Mode } from '../state/modeState.js';
 
+/** Renders navigation for `mode` and returns its HTML markup. */
 export function Navigation(mode: Mode): string {
     const isAdmin = isAdminAuthenticated();
 

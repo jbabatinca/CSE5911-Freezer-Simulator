@@ -1,3 +1,8 @@
+/**
+ * AdminSettingsModal.ts - renders the admin password-change settings modal.
+ * Form actions and feedback are handled by the app controller.
+ */
+/** Takes no arguments; returns the admin settings modal's HTML markup. */
 export function AdminSettingsModal(): string {
   return `
     <div class="modal-overlay">

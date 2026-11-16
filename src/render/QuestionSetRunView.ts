@@ -1,3 +1,7 @@
+/**
+ * QuestionSetRunView.ts - manages and renders a user's active custom question-set run.
+ * Tracks answer progress, timing, expanded targets, and records run outcomes.
+ */
 import type { QuestionSetQuestion, QuestionSetResult, QuestionTargetType } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { FreezerBox, FreezerRack } from '../models/freezerLayout.js';
@@ -19,7 +23,9 @@ let selectedTargetId: string | null = null;
 let results: QuestionSetResult[] = [];
 let restartReason: 'misses' | 'time' | null = null;
 
+// A run restarts from its first question when this 2-minute limit expires.
 const SET_TIME_LIMIT_MS = 120_000;
+// At 20 seconds remaining, the visible countdown is marked as low.
 const LOW_TIME_MS = 20_000;
 let setStartedAt = 0;
 let questionStartedAt = 0;
@@ -37,11 +43,13 @@ function resetQuestion(): void {
     lastAnswerMs = null;
 }
 
+/** Takes no arguments; returns the active run's remaining milliseconds, frozen after completion. */
 export function getQuestionSetRemainingMs(): number {
     if (frozenRemainingMs !== null) return frozenRemainingMs;
     return Math.max(0, SET_TIME_LIMIT_MS - (Date.now() - setStartedAt));
 }
 
+/** Takes milliseconds `ms`; returns a rounded-up `minutes:seconds` countdown string. */
 export function formatQuestionSetTime(ms: number): string {
     const totalSeconds = Math.ceil(ms / 1000);
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
@@ -51,7 +59,7 @@ function formatDuration(ms: number): string {
     return `${(ms / 1000).toFixed(1)}s`;
 }
 
-/** Restarts the run from question 1 when the countdown has expired. Returns true if it restarted. */
+/** Takes no arguments; restarts an expired run and returns true, otherwise returns false. */
 export function enforceQuestionSetTimeLimit(): boolean {
     if (!activeQuestionSetId || runComplete || frozenRemainingMs !== null || getQuestionSetRemainingMs() > 0) return false;
     recordAttempt('failed-time'); 
@@ -60,7 +68,7 @@ export function enforceQuestionSetTimeLimit(): boolean {
     return true;
 }
 
-/** Updates the visible countdown in place. Returns true when the set restarted and needs a full re-render. */
+/** Takes no arguments; updates the countdown and returns true only when a restart needs a full re-render. */
 export function refreshQuestionSetTimer(): boolean {
     if (enforceQuestionSetTimeLimit()) return true;
     const timer = document.getElementById('question-set-timer');
@@ -111,6 +119,7 @@ function getCurrentQuestion(): QuestionSetQuestion | null {
     return questionSet?.questions[activeQuestionIndex] ?? null;
 }
 
+/** Starts `questionSetId` from question one, resetting all run state; returns nothing. */
 export function startQuestionSetRun(questionSetId: string): void {
     activeQuestionSetId = questionSetId;
     activeQuestionIndex = 0;
@@ -122,6 +131,7 @@ export function startQuestionSetRun(questionSetId: string): void {
     resetQuestion();
 }
 
+/** Checks target id `targetId` and updates or restarts the active run; returns nothing. */
 export function submitQuestionSetAnswer(targetId: string): void {
     if (enforceQuestionSetTimeLimit()) return;
     if (runComplete || outcome) return;
@@ -159,6 +169,7 @@ export function submitQuestionSetAnswer(targetId: string): void {
     }
 }
 
+/** Advances after a correct answer or completes the run; returns nothing. */
 export function advanceQuestionSetRun(): void {
     if (enforceQuestionSetTimeLimit()) return;
     if (runComplete || !outcome) return;
@@ -169,15 +180,18 @@ export function advanceQuestionSetRun(): void {
     resetQuestion();
 }
 
+/** Toggles rack id `rackId` and collapses any box; returns nothing. */
 export function toggleUserQuestionSetRack(rackId: string): void {
     expandedRackId = expandedRackId === rackId ? null : rackId;
     expandedBoxId = null;
 }
 
+/** Toggles box id `boxId`; returns nothing. */
 export function toggleUserQuestionSetBox(boxId: string): void {
     expandedBoxId = expandedBoxId === boxId ? null : boxId;
 }
 
+/** Takes question-set id `questionSetId`; returns the active run's rendered HTML markup. */
 export function renderUserQuestionSetView(questionSetId: string): string {
     const questionSet = getQuestionSet(questionSetId);
     if (!questionSet) {

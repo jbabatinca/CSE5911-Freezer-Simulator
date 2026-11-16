@@ -1,3 +1,7 @@
+/**
+ * FreezerEditor.ts - renders a saved freezer layout for editing or read-only viewing.
+ * The returned HTML uses element ids/data attributes handled by the app controller.
+ */
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { SamplePosition, FreezerBox, FreezerRack, Sample } from '../models/freezerLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
@@ -54,6 +58,7 @@ function renderColorPicker(kind: 'rack' | 'box', id: string, name: string, color
   `;
 }
 
+/** Optional print/export and layout-search settings for FreezerEditor. */
 export interface FreezerEditorOptions {
   /** Print/PDF view: all shelves open, racks only, no box grids or controls. */
   exportView?: boolean;
@@ -62,6 +67,7 @@ export interface FreezerEditorOptions {
   searchOpen?: boolean;
 }
 
+/** Takes a saved `layout`, optional `readOnly` flag and `options`; returns the rendered HTML markup. */
 export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, options: FreezerEditorOptions = {}): string {
   const exportView = options.exportView ?? false;
   if (exportView) {

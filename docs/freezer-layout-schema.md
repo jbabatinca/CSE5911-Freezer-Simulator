@@ -1,48 +1,59 @@
-l# Freezer Layout Schema
+# Freezer Layout Schema
 
-The freezer simulator uses the following hierarchy:
+The freezer layout JSON describes this hierarchy:
 
-Freezer → Shelves → Racks → Boxes → Positions
+Freezer → Shelves → Racks → 4 × 4 box slots → Boxes → 9 × 9 positions
 
-## Capacity Rules
+The formal Draft 2020-12 JSON Schema is `src/models/freezer-layout.schema.json`.
+It is the source of validation rules used when importing freezer layouts.
+The TypeScript types are exposed through `src/models/freezerLayout.ts`.
 
-| Container | Allowed Children |
+## Top-level layout
+
+A layout is an object with no additional properties. It must include:
+
+| Property | Rule |
 |---|---|
-| Freezer | Any number of shelves |
-| Shelf | 0–4 racks |
-| Rack | 0–16 boxes |
-| Box | 0–81 positions |
+| `schemaVersion` | Required; exactly the string `"1.0"` |
+| `id`, `name` | Required non-empty strings |
+| `shelves` | Required array with at most 4 shelves |
+| `samples` | Optional array of sample records |
 
-## Freezer
+Object-valued records also reject properties not listed by the schema. A
+non-empty string has `minLength: 1`; whitespace is not trimmed by the schema.
 
-A freezer has an ID, name, schema version, and a list of shelves.
+## Shelves and racks
 
-## Shelf
+Each shelf requires a non-empty `id` and `name`, and a `racks` array containing
+at most 6 racks (zero is allowed).
 
-Each shelf has an ID, name, and a list of racks.
+Each rack requires a non-empty `id` and `name`, and exactly 16 `boxSlots`.
+`color` is optional and, when present, must be a six-digit hex color such as
+`#2E9D50`. Each slot requires integer `row` and `column` values from 1 through
+4. Its `box` may be omitted, set to `null`, or contain a box record.
 
-## Rack
+## Boxes and positions
 
-Each rack has an ID, name, and a list of boxes.
+Each box requires a non-empty `id` and `name`, `rows: 9`, `columns: 9`, and a
+`positions` array with at most 81 entries. Box `color` is optional and follows
+the same hex-color rule as rack color.
 
-## Box
+Every position requires a non-empty `id` and `label`, and integer `row` and
+`column` values from 1 through 9. `sampleId` is optional and must be a
+non-empty string when present.
 
-Each box has an ID, name, number of rows, number of columns, and a list of positions.
+## Samples
 
-The initial version supports a maximum 9 × 9 grid.
+The optional top-level `samples` array contains records with required
+non-empty `id` and `name` values and an optional `description` string.
+Positions may carry a `sampleId` that identifies a stored sample. The schema
+checks the shape and type of these fields, but does not enforce ID uniqueness,
+coordinate uniqueness, or that a `sampleId` refers to an entry in `samples`.
 
-## Position
+## Sample layout
 
-Each position has:
-
-- A unique ID
-- A label such as A1
-- A row number
-- A column number
-- An optional sample ID
-
-An empty position does not need a sample ID.
-
-The TypeScript definitions are located in `src/models/freezerLayout.ts`.
-
-The formal JSON Schema is located in `src/models/freezer-layout.schema.json`.
+`src/data/sample-freezer-layout.json` is an example layout with id
+`freezer-main` and name `Main Lab Freezer`. It contains one shelf, two racks
+with 16 slots each, three populated boxes, and ten position records. Six of
+those positions have `sampleId` values. The example omits the optional
+top-level `samples` array.
