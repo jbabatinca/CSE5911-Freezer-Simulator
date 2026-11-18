@@ -1,16 +1,17 @@
-/** Tests tutorial progression, feedback, resets, and practice freezer rendering. */
+/** Tests the ten-level tutorial: bank selection, one drawn question per level, feedback, resets, and practice freezer rendering. */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   TutorialTrainingModeView,
   startTrainingTutorial,
   answerTrainingTarget,
   toggleTrainingRack,
-  toggleTrainingBox
+  toggleTrainingBox,
+  TUTORIAL_LEVEL_COUNT,
+  TUTORIAL_QUESTION_BANK
 } from '../../src/render/TutorialTrainingModeView.js';
 
-// Math.random() = 0 makes every question pick the first item:
-// L1 -> Project 1 (tutorial-rack-1), L2 -> P1B1 (tutorial-box-1),
-// L3 -> Sample 1001 (tutorial-sample-1001, position A1)
+// Math.random() = 0 makes every level pick its first stored question:
+// L1 Project 1, L2 Project 2, L3 P1B1, L4 P1B2, L5 P2B1, L6 Sample 1001 (A1), L7 Sample 1004, ...
 beforeEach(() => {
   vi.spyOn(Math, 'random').mockReturnValue(0);
   startTrainingTutorial();
@@ -21,44 +22,74 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function answerLevel(targetId: string): void {
-  for (let question = 0; question < 3; question++) answerTrainingTarget(targetId);
+// Answers the first `count` levels correctly using the stored question at `choice` (the index the random mock selects).
+function answerLevels(count: number, choice = 0): void {
+  for (let level = 0; level < count; level++) answerTrainingTarget(TUTORIAL_QUESTION_BANK[level]![choice]!.targetId);
 }
 
+describe('TutorialTrainingModeView - question bank', () => {
+  it('stores three questions for each of the ten levels', () => {
+    expect(TUTORIAL_LEVEL_COUNT).toBe(10);
+    expect(TUTORIAL_QUESTION_BANK).toHaveLength(10);
+    for (const candidates of TUTORIAL_QUESTION_BANK) expect(candidates).toHaveLength(3);
+    expect(TUTORIAL_QUESTION_BANK.flat()).toHaveLength(30);
+  });
+
+  it.each([0, 0.5, 0.99])('draws one stored question per level when the random value is %s', random => {
+    vi.mocked(Math.random).mockReturnValue(random);
+    startTrainingTutorial();
+    const choice = Math.floor(random * 3);
+    for (let level = 1; level <= 9; level++) {
+      expect(TutorialTrainingModeView()).toContain(`LEVEL L${level} ·`);
+      answerTrainingTarget(TUTORIAL_QUESTION_BANK[level - 1]![choice]!.targetId);
+      expect(TutorialTrainingModeView()).not.toContain('Tutorial complete');
+    }
+    answerTrainingTarget(TUTORIAL_QUESTION_BANK[9]![choice]!.targetId);
+    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+  });
+
+  it('draws a different set of questions on each run', () => {
+    expect(TutorialTrainingModeView()).toContain('Find Project 1');
+    vi.mocked(Math.random).mockReturnValue(0.99);
+    startTrainingTutorial();
+    expect(TutorialTrainingModeView()).toContain('Find Project 3');
+  });
+});
+
 describe('TutorialTrainingModeView - level flow', () => {
-  it('should start at level 1 with a rack question', () => {
+  it('should start at level 1 of 10 with a rack question and ten level tiles', () => {
     const html = TutorialTrainingModeView();
     expect(html).toContain('L1 · FIND THE RACK');
     expect(html).toContain('Find Project 1');
+    expect(html).toContain('Question 1 of 10');
     expect(html).toContain('0</strong> / 3 misses at L1');
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const tiles = Array.from(root.querySelectorAll('.tutorial-level strong')).map(tile => tile.textContent);
+    expect(tiles).toEqual(['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'L10']);
   });
 
-  it('advances after three correct questions in each level and completes only after nine', () => {
-    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
-    answerTrainingTarget('tutorial-rack-1');
-    expect(TutorialTrainingModeView()).toContain('L1 · FIND THE RACK');
-    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
-    answerTrainingTarget('tutorial-rack-1');
-    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
-    answerTrainingTarget('tutorial-rack-1');
-    expect(TutorialTrainingModeView()).toContain('L2 · FIND THE BOX');
-    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
-    expect(TutorialTrainingModeView()).toContain('Advancing to L2');
-    answerTrainingTarget('tutorial-box-1');
-    answerTrainingTarget('tutorial-box-1');
-    expect(TutorialTrainingModeView()).toContain('L2 · FIND THE BOX');
-    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
-    answerTrainingTarget('tutorial-box-1');
-    expect(TutorialTrainingModeView()).toContain('L3 · FIND THE SAMPLE');
-    expect(TutorialTrainingModeView()).toContain('Question 1 of 3');
-    answerTrainingTarget('tutorial-sample-1001');
-    answerTrainingTarget('tutorial-sample-1001');
-    expect(TutorialTrainingModeView()).toContain('Question 3 of 3');
-    expect(TutorialTrainingModeView()).not.toContain('Tutorial complete');
-    answerTrainingTarget('tutorial-sample-1001');
-    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
-    expect(TutorialTrainingModeView()).toContain('Tutorial completed in');
-    expect(TutorialTrainingModeView()).toContain('id="btn-tutorial-restart"');
+  it('advances one level per correct answer and completes only after the tenth', () => {
+    for (let level = 1; level <= 9; level++) {
+      answerTrainingTarget(TUTORIAL_QUESTION_BANK[level - 1]![0]!.targetId);
+      const html = TutorialTrainingModeView();
+      expect(html).toContain(`Advancing to L${level + 1}`);
+      expect(html).toContain(`Question ${level + 1} of 10`);
+      expect(html).not.toContain('Tutorial complete');
+    }
+    answerTrainingTarget(TUTORIAL_QUESTION_BANK[9]![0]!.targetId);
+    const html = TutorialTrainingModeView();
+    expect(html).toContain('Tutorial complete');
+    expect(html).toContain('Tutorial completed in');
+    expect(html).toContain('id="btn-tutorial-restart"');
+  });
+
+  it('marks completed and current level tiles', () => {
+    answerLevels(3);
+    const root = document.createElement('div');
+    root.innerHTML = TutorialTrainingModeView();
+    expect(root.querySelectorAll('.tutorial-level.is-complete')).toHaveLength(3);
+    expect(root.querySelector('.tutorial-level.is-current strong')?.textContent).toBe('L4');
   });
 
   it('should mark the wrong rack and the correct rack after an incorrect answer', () => {
@@ -70,95 +101,82 @@ describe('TutorialTrainingModeView - level flow', () => {
     expect(html).toContain('<strong>1</strong> / 3 misses at L1');
   });
 
-  it('should return to level 1 after three misses at a level', () => {
-    answerLevel('tutorial-rack-1');
+  it('should return to level 1 with newly drawn questions after three misses at a level', () => {
+    answerLevels(4);
+    expect(TutorialTrainingModeView()).toContain('Question 5 of 10');
+    vi.mocked(Math.random).mockReturnValue(0.99);
     answerTrainingTarget('tutorial-box-1');
-    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
-    answerTrainingTarget('tutorial-box-2');
-    answerTrainingTarget('tutorial-box-2');
-    answerTrainingTarget('tutorial-box-2');
+    answerTrainingTarget('tutorial-box-1');
+    answerTrainingTarget('tutorial-box-1');
     const html = TutorialTrainingModeView();
     expect(html).toContain('Three incorrect answers. Returning to L1.');
     expect(html).toContain('L1 · FIND THE RACK');
-    expect(html).toContain('Question 1 of 3');
+    expect(html).toContain('Question 1 of 10');
     expect(html).toContain('0</strong> / 3 misses at L1');
-    answerTrainingTarget('tutorial-rack-1');
-    expect(TutorialTrainingModeView()).toContain('L1 · FIND THE RACK');
-    expect(TutorialTrainingModeView()).toContain('Question 2 of 3');
+    expect(html).toContain('Find Project 3');
   });
 
   it('keeps elapsed-time feedback and resets misses after a correct answer', () => {
     vi.useFakeTimers();
     startTrainingTutorial();
-    answerTrainingTarget('tutorial-rack-2');
+    answerTrainingTarget('tutorial-rack-3');
     vi.advanceTimersByTime(2500);
     answerTrainingTarget('tutorial-rack-1');
     expect(TutorialTrainingModeView()).toContain('Answered in 2.5 seconds.');
-    expect(TutorialTrainingModeView()).toContain('0</strong> / 3 misses at L1');
+    expect(TutorialTrainingModeView()).toContain('0</strong> / 3 misses at L2');
     vi.advanceTimersByTime(1000);
-    answerTrainingTarget('tutorial-rack-1');
+    answerTrainingTarget('tutorial-rack-2');
     expect(TutorialTrainingModeView()).toContain('Answered in 1.0 seconds.');
   });
 
-  it('should restart from level 1 after the tutorial is complete', () => {
-    answerLevel('tutorial-rack-1');
-    answerLevel('tutorial-box-1');
-    answerLevel('tutorial-sample-1001');
+  it('should restart from level 1 with fresh questions after the tutorial is complete', () => {
+    answerLevels(10);
+    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+    vi.mocked(Math.random).mockReturnValue(0.99);
     startTrainingTutorial();
     const html = TutorialTrainingModeView();
     expect(html).not.toContain('Tutorial complete');
     expect(html).toContain('L1 · FIND THE RACK');
-    expect(html).toContain('Question 1 of 3');
+    expect(html).toContain('Question 1 of 10');
+    expect(html).toContain('Find Project 3');
     expect(html).toContain('0</strong> / 3 misses at L1');
   });
 });
 
 describe('TutorialTrainingModeView - what each level shows', () => {
   it('renders the third rack and allows its rack, box, and sample targets to be answered', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    vi.mocked(Math.random).mockReturnValue(0.99);
     startTrainingTutorial();
     let html = TutorialTrainingModeView();
     expect(html).toContain('Find Project 3');
     expect(html).toContain('data-training-target="tutorial-rack-3"');
     expect(html).toContain('--tutorial-rack-color: #318272');
 
-    answerLevel('tutorial-rack-3');
+    answerLevels(2, 2);
     toggleTrainingRack('tutorial-rack-3');
     html = TutorialTrainingModeView();
-    expect(html).toContain('Find P3B2');
+    expect(html).toContain('Find P3B1');
     expect(html).toContain('data-training-target="tutorial-box-5"');
     expect(html).toContain('data-training-target="tutorial-box-6"');
     expect(html).toContain('2 / 16 boxes filled');
 
-    answerLevel('tutorial-box-6');
-    toggleTrainingRack('tutorial-rack-3');
-    toggleTrainingBox('tutorial-box-6');
-    html = TutorialTrainingModeView();
-    expect(html).toContain('Find Sample 3006');
-    expect(html).toContain('data-training-target="tutorial-sample-3004"');
-    expect(html).toContain('data-training-target="tutorial-sample-3005"');
-    expect(html).toContain('data-training-target="tutorial-sample-3006"');
-    expect(html).toContain('Sample 3006, position I8');
-    answerLevel('tutorial-sample-3006');
-    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+    answerTrainingTarget('tutorial-box-5');
+    expect(TutorialTrainingModeView()).toContain('Find P3B2');
   });
 
-  it('selects and renders the third rack’s first box and its specimens', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.7);
+  it('renders every sample of the third rack at the sample levels', () => {
+    vi.mocked(Math.random).mockReturnValue(0.99);
     startTrainingTutorial();
-    answerLevel('tutorial-rack-3');
-    toggleTrainingRack('tutorial-rack-3');
-    expect(TutorialTrainingModeView()).toContain('Find P3B1');
-    answerLevel('tutorial-box-5');
+    answerLevels(5, 2);
     toggleTrainingRack('tutorial-rack-3');
     toggleTrainingBox('tutorial-box-5');
     const html = TutorialTrainingModeView();
-    expect(html).toContain('Find Sample 3001');
+    expect(html).toContain('Find Sample 3003');
     expect(html).toContain('data-training-target="tutorial-sample-3001"');
     expect(html).toContain('data-training-target="tutorial-sample-3002"');
     expect(html).toContain('data-training-target="tutorial-sample-3003"');
-    answerLevel('tutorial-sample-3001');
-    expect(TutorialTrainingModeView()).toContain('Tutorial complete');
+    answerTrainingTarget('tutorial-sample-3003');
+    expect(TutorialTrainingModeView()).toContain('Advancing to L7');
   });
 
   it('renders racks as color-coded cards and boxes in a 4x4 grid with empty slots', () => {
@@ -167,7 +185,7 @@ describe('TutorialTrainingModeView - what each level shows', () => {
     expect(rackView).toContain('data-training-target="tutorial-rack-1"');
     expect(rackView).toContain('2 / 16 boxes filled');
 
-    answerLevel('tutorial-rack-1');
+    answerLevels(2);
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
     const root = document.createElement('div');
@@ -181,20 +199,21 @@ describe('TutorialTrainingModeView - what each level shows', () => {
     expect(html).toContain('class="question-set-rack-capacity"');
   });
 
-  it('should show boxes as plain buttons at level 2, without samples', () => {
-    answerLevel('tutorial-rack-1');
+  it('should show boxes as plain buttons at the box levels, without samples', () => {
+    answerLevels(2);
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
+    expect(html).toContain('L3 · FIND THE BOX');
     expect(html).toContain('data-training-target="tutorial-box-1"');
     expect(html).not.toContain('tutorial-sample-grid');
   });
 
-  it('should show the expanded 9x9 sample grid below the box grid at level 3', () => {
-    answerLevel('tutorial-rack-1');
-    answerLevel('tutorial-box-1');
+  it('should show the expanded 9x9 sample grid below the box grid at the sample levels', () => {
+    answerLevels(5);
     toggleTrainingRack('tutorial-rack-1');
     toggleTrainingBox('tutorial-box-1');
     const html = TutorialTrainingModeView();
+    expect(html).toContain('L6 · FIND THE SAMPLE');
     expect(html).toContain('aria-label="Sample 1001, position A1"');
     expect(html).toContain('data-training-target="tutorial-sample-1001"');
     const root = document.createElement('div');
@@ -210,7 +229,7 @@ describe('TutorialTrainingModeView - what each level shows', () => {
   });
 
   it('should collapse a rack when it is toggled twice', () => {
-    answerLevel('tutorial-rack-1');
+    answerLevels(2);
     toggleTrainingRack('tutorial-rack-1');
     toggleTrainingRack('tutorial-rack-1');
     const html = TutorialTrainingModeView();
