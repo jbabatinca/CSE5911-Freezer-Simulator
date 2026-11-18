@@ -6,10 +6,9 @@ type TutorialTargetType = 'rack' | 'box' | 'sample';
 /** Restricts feedback to the supported answer, progress, and completion display states. */
 type FeedbackKind = 'correct' | 'incorrect' | 'progress' | 'complete';
 
-/** Describes a practice sample with its id, name, and one-based position within a box. */
+/** Describes a practice sample by its id and one-based position within a box. */
 interface TutorialSample {
     id: string;
-    name: string;
     row: number;
     column: number;
 }
@@ -47,106 +46,63 @@ interface TutorialQuestion {
     address: string;
 }
 
-// Practice data is independent of saved layouts; tutorial progress stays in memory for this page session.
-const tutorialShelf = {
-    id: 'tutorial-shelf-1',
-    name: 'Shelf 1',
-    racks: [
-        {
-            id: 'tutorial-rack-1',
-            name: 'Project 1',
-            color: '#2878b8',
-            boxes: [
-                {
-                    id: 'tutorial-box-1',
-                    name: 'P1B1',
-                    row: 1,
-                    column: 1,
-                    color: '#42a889',
-                    samples: [
-                        { id: 'tutorial-sample-1001', name: 'Sample 1001', row: 1, column: 1 },
-                        { id: 'tutorial-sample-1002', name: 'Sample 1002', row: 3, column: 2 },
-                        { id: 'tutorial-sample-1003', name: 'Sample 1003', row: 4, column: 4 }
-                    ]
-                },
-                {
-                    id: 'tutorial-box-2',
-                    name: 'P1B2',
-                    row: 1,
-                    column: 2,
-                    color: '#d2a82b',
-                    samples: [
-                        { id: 'tutorial-sample-1004', name: 'Sample 1004', row: 2, column: 3 },
-                        { id: 'tutorial-sample-1005', name: 'Sample 1005', row: 5, column: 5 },
-                        { id: 'tutorial-sample-1006', name: 'Sample 1006', row: 8, column: 7 }
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'tutorial-rack-2',
-            name: 'Project 2',
-            color: '#bd692f',
-            boxes: [
-                {
-                    id: 'tutorial-box-3',
-                    name: 'P2B1',
-                    row: 1,
-                    column: 1,
-                    color: '#8c73b5',
-                    samples: [
-                        { id: 'tutorial-sample-2001', name: 'Sample 2001', row: 2, column: 1 },
-                        { id: 'tutorial-sample-2002', name: 'Sample 2002', row: 4, column: 6 },
-                        { id: 'tutorial-sample-2003', name: 'Sample 2003', row: 6, column: 8 }
-                    ]
-                },
-                {
-                    id: 'tutorial-box-4',
-                    name: 'P2B2',
-                    row: 1,
-                    column: 2,
-                    color: '#d97945',
-                    samples: [
-                        { id: 'tutorial-sample-2004', name: 'Sample 2004', row: 1, column: 9 },
-                        { id: 'tutorial-sample-2005', name: 'Sample 2005', row: 5, column: 1 },
-                        { id: 'tutorial-sample-2006', name: 'Sample 2006', row: 9, column: 9 }
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'tutorial-rack-3',
-            name: 'Project 3',
-            color: '#318272',
-            boxes: [
-                {
-                    id: 'tutorial-box-5',
-                    name: 'P3B1',
-                    row: 1,
-                    column: 1,
-                    color: '#5997bf',
-                    samples: [
-                        { id: 'tutorial-sample-3001', name: 'Sample 3001', row: 1, column: 2 },
-                        { id: 'tutorial-sample-3002', name: 'Sample 3002', row: 3, column: 4 },
-                        { id: 'tutorial-sample-3003', name: 'Sample 3003', row: 7, column: 5 }
-                    ]
-                },
-                {
-                    id: 'tutorial-box-6',
-                    name: 'P3B2',
-                    row: 1,
-                    column: 2,
-                    color: '#c77b8f',
-                    samples: [
-                        { id: 'tutorial-sample-3004', name: 'Sample 3004', row: 2, column: 2 },
-                        { id: 'tutorial-sample-3005', name: 'Sample 3005', row: 5, column: 6 },
-                        { id: 'tutorial-sample-3006', name: 'Sample 3006', row: 9, column: 8 }
-                    ]
-                }
-            ]
-        }
-    ] satisfies TutorialRack[]
+// IDs include the shelf because project names recur throughout the freezer.
+const rackId = (shelf: number, rack: number): string => `tutorial-rack-${shelf}-${rack}`;
+const boxId = (shelf: number, rack: number, box: number): string => `tutorial-box-${shelf}-${rack}-${box}`;
+const sampleId = (shelf: number, rack: number, box: number, position: number): string => `tutorial-sample-${shelf}-${rack}-${box}-${position}`;
+
+const projectColors: Record<string, string> = {
+    INSPIR: '#2878b8', PROMIS: '#bd692f', EPIC: '#8c73b5', MOMI: '#d2a82b',
+    'Project 1': '#318272', 'Project 2': '#c77b8f', 'Project 3': '#42a889'
 };
+
+const shelfProjects = [
+    ['INSPIR', 'PROMIS'],
+    ['Project 1', 'EPIC', 'MOMI'],
+    ['MOMI', 'EPIC', 'INSPIR', 'PROMIS'],
+    ['PROMIS', 'Project 2', 'INSPIR', 'EPIC', 'Project 3', 'MOMI']
+];
+
+// Shelves grow denser from top to bottom; even the fullest sample grid retains empty positions.
+const tutorialShelves = shelfProjects.map((projects, shelfIndex) => {
+    const shelfNumber = shelfIndex + 1;
+    const boxCount = 2 ** shelfNumber;
+    return {
+        id: `tutorial-shelf-${shelfNumber}`,
+        name: `Shelf ${shelfNumber}`,
+        racks: projects.map((name, rackIndex): TutorialRack => {
+            const rackNumber = rackIndex + 1;
+            const color = projectColors[name]!;
+            const sampleCount = [3, 10, 20, 36][shelfIndex]! + rackIndex;
+            return {
+                id: rackId(shelfNumber, rackNumber),
+                name,
+                color,
+                boxes: Array.from({ length: boxCount }, (_, boxIndex): TutorialBox => {
+                    const boxNumber = boxIndex + 1;
+                    const positions = Array.from({ length: FREEZER_LAYOUT_LIMITS.maxPositionsPerBox }, (_, index) => index);
+                    // Draw without replacement once per page load so coordinates stay stable during a run.
+                    for (let index = 0; index < sampleCount; index++) {
+                        const selected = index + Math.floor(Math.random() * (positions.length - index));
+                        [positions[index], positions[selected]] = [positions[selected]!, positions[index]!];
+                    }
+                    return {
+                        id: boxId(shelfNumber, rackNumber, boxNumber),
+                        name: `Box ${boxNumber}`,
+                        row: Math.floor(boxIndex / FREEZER_LAYOUT_LIMITS.rackColumns) + 1,
+                        column: boxIndex % FREEZER_LAYOUT_LIMITS.rackColumns + 1,
+                        color,
+                        samples: Array.from({ length: sampleCount }, (_, sampleIndex): TutorialSample => ({
+                            id: sampleId(shelfNumber, rackNumber, boxNumber, sampleIndex + 1),
+                            row: Math.floor(positions[sampleIndex]! / FREEZER_LAYOUT_LIMITS.boxColumns) + 1,
+                            column: positions[sampleIndex]! % FREEZER_LAYOUT_LIMITS.boxColumns + 1
+                        }))
+                    };
+                })
+            };
+        })
+    };
+});
 
 /** Number of levels (L1-L10) in one tutorial run; each level shows exactly one question. */
 export const TUTORIAL_LEVEL_COUNT = 10;
@@ -155,19 +111,18 @@ const rackQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 
 const boxQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 'box', targetId });
 const sampleQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 'sample', targetId });
 
-// L1-L2 ask for racks, L3-L5 for boxes, and L6-L10 for samples; targets repeat across levels because the practice freezer is small.
 /** Stores the three candidate questions for each level, indexed by level number minus one; one is drawn per level each run. */
 export const TUTORIAL_QUESTION_BANK: readonly (readonly TutorialQuestionDefinition[])[] = [
-    [rackQuestion('tutorial-rack-1'), rackQuestion('tutorial-rack-2'), rackQuestion('tutorial-rack-3')],
-    [rackQuestion('tutorial-rack-2'), rackQuestion('tutorial-rack-3'), rackQuestion('tutorial-rack-1')],
-    [boxQuestion('tutorial-box-1'), boxQuestion('tutorial-box-3'), boxQuestion('tutorial-box-5')],
-    [boxQuestion('tutorial-box-2'), boxQuestion('tutorial-box-4'), boxQuestion('tutorial-box-6')],
-    [boxQuestion('tutorial-box-3'), boxQuestion('tutorial-box-5'), boxQuestion('tutorial-box-2')],
-    [sampleQuestion('tutorial-sample-1001'), sampleQuestion('tutorial-sample-2002'), sampleQuestion('tutorial-sample-3003')],
-    [sampleQuestion('tutorial-sample-1004'), sampleQuestion('tutorial-sample-2005'), sampleQuestion('tutorial-sample-3006')],
-    [sampleQuestion('tutorial-sample-1002'), sampleQuestion('tutorial-sample-2003'), sampleQuestion('tutorial-sample-3004')],
-    [sampleQuestion('tutorial-sample-1005'), sampleQuestion('tutorial-sample-2006'), sampleQuestion('tutorial-sample-3001')],
-    [sampleQuestion('tutorial-sample-1003'), sampleQuestion('tutorial-sample-2004'), sampleQuestion('tutorial-sample-3005')]
+    [rackQuestion(rackId(1, 1)), rackQuestion(rackId(1, 2)), rackQuestion(rackId(2, 1))],
+    [rackQuestion(rackId(2, 2)), rackQuestion(rackId(3, 1)), rackQuestion(rackId(4, 5))],
+    [boxQuestion(boxId(1, 1, 1)), boxQuestion(boxId(2, 2, 2)), boxQuestion(boxId(3, 1, 5))],
+    [boxQuestion(boxId(2, 1, 4)), boxQuestion(boxId(3, 3, 7)), boxQuestion(boxId(4, 2, 10))],
+    [boxQuestion(boxId(3, 4, 8)), boxQuestion(boxId(4, 3, 15)), boxQuestion(boxId(4, 6, 16))],
+    [sampleQuestion(sampleId(1, 1, 1, 1)), sampleQuestion(sampleId(2, 2, 2, 9)), sampleQuestion(sampleId(3, 1, 3, 18))],
+    [sampleQuestion(sampleId(2, 1, 4, 10)), sampleQuestion(sampleId(3, 2, 5, 20)), sampleQuestion(sampleId(4, 2, 6, 30))],
+    [sampleQuestion(sampleId(3, 1, 8, 20)), sampleQuestion(sampleId(3, 4, 2, 23)), sampleQuestion(sampleId(4, 4, 11, 35))],
+    [sampleQuestion(sampleId(3, 3, 4, 22)), sampleQuestion(sampleId(4, 3, 13, 36)), sampleQuestion(sampleId(4, 5, 15, 40))],
+    [sampleQuestion(sampleId(4, 1, 16, 36)), sampleQuestion(sampleId(4, 4, 14, 39)), sampleQuestion(sampleId(4, 6, 16, 41))]
 ];
 
 const LEVEL_TITLES: Record<TutorialTargetType, string> = {
@@ -206,14 +161,14 @@ function choose<T>(items: T[]): T {
     return items[Math.floor(Math.random() * items.length)]!;
 }
 
-/** Takes no arguments and returns all practice boxes paired with their containing racks. */
-function getBoxes(): { rack: TutorialRack; box: TutorialBox }[] {
-    return tutorialShelf.racks.flatMap(rack => rack.boxes.map(box => ({ rack, box })));
+/** Returns practice boxes with their containing shelves and racks. */
+function getBoxes() {
+    return tutorialShelves.flatMap(shelf => shelf.racks.flatMap(rack => rack.boxes.map(box => ({ shelf, rack, box }))));
 }
 
-/** Takes no arguments and returns all practice samples paired with their containing racks and boxes. */
-function getSamples(): { rack: TutorialRack; box: TutorialBox; sample: TutorialSample }[] {
-    return getBoxes().flatMap(({ rack, box }) => box.samples.map(sample => ({ rack, box, sample })));
+/** Returns practice samples with their containing shelves, racks, and boxes. */
+function getSamples() {
+    return getBoxes().flatMap(({ shelf, rack, box }) => box.samples.map(sample => ({ shelf, rack, box, sample })));
 }
 
 /** Converts a sample's one-based row and column into a position label such as A1 and returns it. */
@@ -225,32 +180,34 @@ function samplePosition(sample: TutorialSample): string {
 function buildQuestion(definition: TutorialQuestionDefinition): TutorialQuestion {
     const { type, targetId } = definition;
     if (type === 'rack') {
-        const rack = tutorialShelf.racks.find(item => item.id === targetId)!;
+        const shelf = tutorialShelves.find(item => item.racks.some(rack => rack.id === targetId))!;
+        const rack = shelf.racks.find(item => item.id === targetId)!;
         return {
             type,
             targetId,
-            prompt: `Find ${rack.name}`,
+            prompt: `Find ${shelf.name} / ${rack.name}`,
             detail: 'Select the matching rack.',
-            address: `${tutorialShelf.name} / ${rack.name}`
+            address: `${shelf.name} / ${rack.name}`
         };
     }
     if (type === 'box') {
-        const { rack, box } = getBoxes().find(item => item.box.id === targetId)!;
+        const { shelf, rack, box } = getBoxes().find(item => item.box.id === targetId)!;
         return {
             type,
             targetId,
-            prompt: `Find ${box.name}`,
+            prompt: `Find ${shelf.name} / ${rack.name} / ${box.name}`,
             detail: 'Select the matching box.',
-            address: `${tutorialShelf.name} / ${rack.name} / ${box.name}`
+            address: `${shelf.name} / ${rack.name} / ${box.name}`
         };
     }
-    const { rack, box, sample } = getSamples().find(item => item.sample.id === targetId)!;
+    const { shelf, rack, box, sample } = getSamples().find(item => item.sample.id === targetId)!;
+    const address = `${shelf.name} / ${rack.name} / ${box.name} / ${samplePosition(sample)}`;
     return {
         type,
         targetId,
-        prompt: `Find ${sample.name}`,
+        prompt: `Find ${address}`,
         detail: 'Select the matching sample position.',
-        address: `${tutorialShelf.name} / ${rack.name} / ${box.name} / Position ${samplePosition(sample)}`
+        address
     };
 }
 
@@ -351,7 +308,7 @@ function renderSampleGrid(box: TutorialBox, rack: TutorialRack): string {
                 continue;
             }
             const label = samplePosition(sample);
-            cells += `<button type="button" class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${escapeHtml(sample.id)}" aria-label="${escapeHtml(sample.name)}, position ${label}" title="${escapeHtml(sample.name)}">${label}</button>`;
+            cells += `<button type="button" class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${escapeHtml(sample.id)}" aria-label="Position ${label}" title="Position ${label}">${label}</button>`;
         }
     }
     return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${getReadableTextColor(boxColor)}">${cells}</div>`;
@@ -446,13 +403,13 @@ function getReadableTextColor(hexColor: string): string {
 function renderTutorialLayout(): string {
     return `
         <section class="tutorial-freezer" aria-label="Tutorial freezer">
-            <section class="tutorial-shelf" aria-label="${tutorialShelf.name}">
+            ${tutorialShelves.map(shelf => `<section class="tutorial-shelf" aria-label="${escapeHtml(shelf.name)}">
                 <header class="tutorial-shelf-header">
                     <span class="tutorial-shelf-label">SHELF</span>
-                    <h2>${tutorialShelf.name}</h2>
+                    <h2>${escapeHtml(shelf.name)}</h2>
                 </header>
-                <ul class="tutorial-racks">${tutorialShelf.racks.map(renderRack).join('')}</ul>
-            </section>
+                <ul class="tutorial-racks">${shelf.racks.map(renderRack).join('')}</ul>
+            </section>`).join('')}
         </section>
     `;
 }
