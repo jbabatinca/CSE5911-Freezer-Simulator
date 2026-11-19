@@ -1295,6 +1295,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 15px;
 }
 
+/* Ten tutorial level tiles: five per row, two per row on phones. */
+.tutorial-levels.tutorial-levels-compact {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 600px) {
+  .tutorial-levels.tutorial-levels-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .tutorial-level.is-current {
   border-color: var(--primary);
   background: var(--surface-hover);
