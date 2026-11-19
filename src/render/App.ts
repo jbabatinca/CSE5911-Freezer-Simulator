@@ -41,7 +41,7 @@ import {
   addShelf, removeShelf, 
         addRack, removeRack, renameRack, setRackColor,
     addBox, removeBox, setBoxColor,
-    addSample, assignSampleToPosition, renameBox, renameSample, removeSample
+    assignSampleToPosition, renameBox, renameSample, removeSampleFromPosition
 } from '../services/FreezerService.js';
 import {
   getExpandedShelfId, setExpandedShelfId,
@@ -1077,52 +1077,22 @@ export function App(): void {
             });
         });
 
-        // ===== SAMPLE BUTTONS =====
-        // Add Sample
-        // Button id is "btn-add-sample-<boxRow>-<boxCol>-<sampleRow>-<sampleCol>": which box slot, then which cell inside the box.
-        document.querySelectorAll('[id^="btn-add-sample-"]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const coords = btn.id.replace('btn-add-sample-', '').split('-');
-                const boxRow = parseInt(coords[0]!);
-                const boxCol = parseInt(coords[1]!);
-                const sampleRow = parseInt(coords[2]!);
-                const sampleCol = parseInt(coords[3]!);
-                const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                const expandedRackId = getExpandedRackId();
-
-                if (!currentLayout || !expandedShelfId || !expandedRackId) return;
-                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
-                if (!specimenName) return;
-
-                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
-                const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
-
-                if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addSample(currentLayout, shelfIndex, rackIndex, boxRow, boxCol, sampleRow, sampleCol, specimenName);
-                    currentLayout.updatedAt = new Date().toISOString();
-                    saveLayout(currentLayout);
-                    render();
-                }
-            });
-        });
-
-        // Assign a new specimen to an existing empty position (suffix is the position id)
-        document.querySelectorAll('[id^="btn-assign-specimen-"]').forEach(btn => {
+        // Assign a new sample to an existing empty position (suffix is the position id)
+        document.querySelectorAll('[id^="btn-assign-sample-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
                 if (!currentLayout) return;
-                const specimenName = await requestName('Add specimen', 'Specimen name', 'Add specimen');
-                if (!currentLayout || !specimenName) return;
-                const positionId = btn.id.replace('btn-assign-specimen-', '');
-                assignSampleToPosition(currentLayout, positionId, specimenName);
+                const sampleName = await requestName('Add sample', 'Sample name', 'Add sample');
+                if (!currentLayout || !sampleName) return;
+                const positionId = btn.id.replace('btn-assign-sample-', '');
+                assignSampleToPosition(currentLayout, positionId, sampleName);
                 currentLayout.updatedAt = new Date().toISOString();
                 saveLayout(currentLayout);
                 render();
             });
         });
 
-        // Rename a specimen (suffix is the sample id; falls back to showing the id if the sample record is missing)
+        // Rename a sample (suffix is the sample id; falls back to showing the id if the sample record is missing)
         document.querySelectorAll('[id^="btn-rename-sample-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
@@ -1130,7 +1100,7 @@ export function App(): void {
                 const sampleId = btn.id.replace('btn-rename-sample-', '');
                 const sample = currentLayout.freezerData.samples?.find(item => item.id === sampleId);
 
-                const sampleName = await requestName('Rename specimen', 'Specimen name', 'Save name', sample?.name ?? sampleId);
+                const sampleName = await requestName('Rename sample', 'Sample name', 'Save name', sample?.name ?? sampleId);
                 if (!sampleName) return;
                 renameSample(currentLayout, sampleId, sampleName);
                 currentLayout.updatedAt = new Date().toISOString();
@@ -1140,34 +1110,17 @@ export function App(): void {
         });
 
         // Remove Sample
-        // The id suffix is the position id. Needs the expanded shelf, rack and box to find which slot to remove from.
-        // Note: unlike the other editor actions, this one does not call saveLayout(), so the removal is
-        // only kept once the user clicks Save.
+        // The id suffix is the position id. The position stays in the box; only its sample is cleared.
         document.querySelectorAll('[id^="btn-remove-sample-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const positionId = btn.id.replace('btn-remove-sample-', '');
                 const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                const expandedRackId = getExpandedRackId();
-                const expandedBoxId = getExpandedBoxId();
-
-                if (!currentLayout || !expandedShelfId || !expandedRackId || !expandedBoxId) return;
+                if (!currentLayout) return;
                 if (!confirm('Remove this sample?')) return;
 
-                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
-                const shelf = currentLayout.freezerData.shelves[shelfIndex];
-                if (shelfIndex < 0 || !shelf) return;
-
-                const rackIndex = shelf.racks.findIndex(r => r.id === expandedRackId);
-                if (rackIndex < 0) return;
-
-                const slot = shelf.racks[rackIndex]!.boxSlots.find(s => s.box?.id === expandedBoxId);
-                if (!slot) return;
-
-                const row = slot.row;
-                const column = slot.column;
-
-                removeSample(currentLayout, shelfIndex, rackIndex, row, column, positionId);
+                removeSampleFromPosition(currentLayout, positionId);
+                currentLayout.updatedAt = new Date().toISOString();
+                saveLayout(currentLayout);
                 render();
             });
         });

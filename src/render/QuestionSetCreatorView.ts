@@ -21,9 +21,9 @@ function escapeHtml(value: string): string {
     })[character]!);
 }
 
-/** Returns the display label for a target type, using 'Specimen' for the model's 'sample' type. */
+/** Returns the display label for a target type, using 'Sample' for the model's 'sample' type. */
 function getTargetTypeLabel(targetType: QuestionTargetType): string {
-    return targetType === 'sample' ? 'Specimen' : targetType === 'rack' ? 'Rack' : 'Box';
+    return targetType === 'sample' ? 'Sample' : targetType === 'rack' ? 'Rack' : 'Box';
 }
 
 /** Takes no arguments, starts a blank draft using the first saved layout when available, and returns nothing. */

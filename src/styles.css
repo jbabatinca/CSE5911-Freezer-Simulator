@@ -784,7 +784,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: bold;
 }
 
-.freezer-editor .btn-assign-specimen {
+.freezer-editor .btn-assign-sample {
   padding: 0;
   border: 1px solid var(--item-foreground, #fff);
   color: var(--item-foreground, #fff);
@@ -792,8 +792,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 10px;
 }
 
-.freezer-editor .btn-assign-specimen:hover,
-.freezer-editor .btn-assign-specimen:focus-visible {
+.freezer-editor .btn-assign-sample:hover,
+.freezer-editor .btn-assign-sample:focus-visible {
   filter: brightness(0.88);
 }
 

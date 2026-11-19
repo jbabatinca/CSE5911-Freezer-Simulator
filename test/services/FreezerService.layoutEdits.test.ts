@@ -8,8 +8,7 @@ import {
   setBoxColor,
   createSample,
   renameSample,
-  assignSampleToPosition,
-  addSample
+  assignSampleToPosition
 } from '../../src/services/FreezerService.js';
 
 function makeLayout(): SavedLayout {
@@ -157,34 +156,9 @@ describe('FreezerService - Sample Naming and Assignment', () => {
     renameSample(layout, sample.id, '  New name  ');
     expect(layout.freezerData.samples?.[0]?.name).toBe('New name');
   });
-
-  it('should create and assign a named sample when addSample gets a name', () => {
-    addBox(layout, 0, 0, 1, 1);
-    addSample(layout, 0, 0, 1, 1, 1, 1, '  Tube 7  ');
-    const position = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.positions[0]!;
-    const linked = layout.freezerData.samples?.find(s => s.id === position.sampleId);
-    expect(linked?.name).toBe('Tube 7');
-  });
-
-  it('should reuse an existing unassigned sample when no name is given', () => {
-    const spare = createSample(layout, 'Spare');
-    addBox(layout, 0, 0, 1, 1);
-    addSample(layout, 0, 0, 1, 1, 1, 1);
-    const position = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.positions[0]!;
-    expect(position.sampleId).toBe(spare.id);
-    expect(layout.freezerData.samples).toHaveLength(1);
-  });
-
-  it('should leave a position without a sample when nothing is unassigned', () => {
-    addBox(layout, 0, 0, 1, 1);
-    addSample(layout, 0, 0, 1, 1, 1, 1);
-    const position = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.positions[0]!;
-    expect(position.sampleId).toBeUndefined();
-  });
-
+  
   it('should assign a named sample to an empty position via assignSampleToPosition', () => {
     addBox(layout, 0, 0, 1, 1);
-    addSample(layout, 0, 0, 1, 1, 1, 1);
     const position = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.positions[0]!;
 
     assignSampleToPosition(layout, position.id, '  Aliquot  ');
@@ -195,9 +169,10 @@ describe('FreezerService - Sample Naming and Assignment', () => {
 
   it('should not overwrite a position that already has a sample', () => {
     addBox(layout, 0, 0, 1, 1);
-    addSample(layout, 0, 0, 1, 1, 1, 1, 'First');
     const position = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!.positions[0]!;
+    assignSampleToPosition(layout, position.id, 'First');
     const originalSampleId = position.sampleId;
+    expect(originalSampleId).toBeDefined();
 
     assignSampleToPosition(layout, position.id, 'Second');
 

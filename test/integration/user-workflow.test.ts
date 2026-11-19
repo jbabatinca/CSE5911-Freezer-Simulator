@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { SavedLayout } from '../../src/models/SavedLayout.js';
 import { createNewEmptyLayout } from '../../src/state/layoutState.js';
 import { saveLayout, getLayout, getAllLayouts } from '../../src/services/StorageService.js';
-import { addShelf, addRack, addBox, addSample, createSample } from '../../src/services/FreezerService.js';
+import { addShelf, addRack, addBox, assignSampleToPosition, createSample } from '../../src/services/FreezerService.js';
 
 describe('User Workflow Integration Tests', () => {
   beforeEach(() => {
@@ -40,10 +40,12 @@ describe('User Workflow Integration Tests', () => {
       const box = rack.boxSlots[0]?.box;
       expect(box).toBeDefined();
 
-      // Step 4: Add sample position to box
-      addSample(layout, 0, 0, 1, 1, 1, 1);
-      expect(box?.positions).toHaveLength(1);
+      // Step 4: A new box already has all 81 positions; assign a sample to the first one
+      expect(box?.positions).toHaveLength(81);
+      assignSampleToPosition(layout, box!.positions[0]!.id, 'Test Sample');
       expect(box?.positions[0]?.label).toBe('A1');
+      expect(box?.positions[0]?.sampleId).toBeDefined();
+
     });
 
     it('should create and locate a sample in the hierarchy', () => {
@@ -58,13 +60,14 @@ describe('User Workflow Integration Tests', () => {
       addShelf(layout);
       addRack(layout, layout.freezerData.shelves[0]!.id);
       addBox(layout, 0, 0, 1, 1);
-      addSample(layout, 0, 0, 1, 1, 5, 5);
+      assignSampleToPosition(layout, layout.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box?.positions[40]?.id!, 'Test Sample');
 
       // Verify the navigation path works
       const shelf = layout.freezerData.shelves[0];
       const rack = shelf?.racks[0];
       const box = rack?.boxSlots[0]?.box;
-      const position = box?.positions[0];
+      const position = box?.positions.find(p => p.row === 5 && p.column === 5);
+
 
       expect(position).toBeDefined();
       expect(position?.label).toBe('E5');
@@ -77,8 +80,7 @@ describe('User Workflow Integration Tests', () => {
       addShelf(layout);
       addRack(layout, layout.freezerData.shelves[0]!.id);
       addBox(layout, 0, 0, 1, 1);
-      createSample(layout, 'Sample 1');
-      addSample(layout, 0, 0, 1, 1, 1, 1);
+      assignSampleToPosition(layout, layout.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box?.positions[40]?.id!, 'Sample 1');
 
       // Save to storage
       saveLayout(layout);

@@ -138,7 +138,7 @@ describe('Question set application workflow', () => {
 
   it('runs a set with wrong answers, then restarts and completes a different set', () => {
     saveQuestionSet(makeQuestionSet());
-    saveQuestionSet(makeQuestionSet({ id: 'set-2', name: 'Specimen practice', questions: [makeQuestionSet().questions[2]!] }));
+    saveQuestionSet(makeQuestionSet({ id: 'set-2', name: 'Sample practice', questions: [makeQuestionSet().questions[2]!] }));
     App();
     click('#btn-user-mode');
     chooseSet('set-1');
@@ -177,7 +177,7 @@ describe('Question set application workflow', () => {
     expect(document.activeElement?.id).toBe('user-question-set-select');
     expect(button('#btn-open-question-set').disabled).toBe(true);
     chooseSet('set-2');
-    expect(element(document, '.user-question-set-view h1').textContent).toBe('Specimen practice');
+    expect(element(document, '.user-question-set-view h1').textContent).toBe('Sample practice');
     expect(element(document, '.question-set-score').textContent).toContain('Score: 0 / 1 · Misses: 0 / 3');
     click('[data-question-set-toggle-rack="layout-1-rack-1"]');
     click('[data-question-set-toggle-box="layout-1-box-1"]');
