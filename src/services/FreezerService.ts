@@ -10,8 +10,8 @@ import type { FreezerShelf, FreezerRack, FreezerBox, SamplePosition, Sample } fr
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 
-// Builds an id like "shelf-<timestamp>-<random>"; unique enough for local use.
 let idCounter = 0;
+// Builds an id like "shelf-<timestamp>-<counter>"; the counter keeps ids made in the same millisecond unique.
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${idCounter++}`;
 }

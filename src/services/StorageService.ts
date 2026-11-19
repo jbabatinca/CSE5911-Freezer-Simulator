@@ -3,7 +3,11 @@ import type { SavedLayout } from '../models/SavedLayout.js';
 import { fillMissingPositions } from './FreezerService.js';
 
 // The 'freezer-layouts' key holds a JSON array; parsing and storage errors propagate to callers.
-/** Takes no arguments and returns all saved layouts, or an empty array when the storage key is absent. */
+/**
+ * Takes no arguments and returns all saved layouts, or an empty array when the storage key is absent.
+ * Also fills in any missing box positions (see fillMissingPositions), so layouts saved before every
+ * box had 81 positions still work. The fill is in memory until the layout is saved again.
+ */
 export function getAllLayouts(): SavedLayout[] {
   const stored = localStorage.getItem('freezer-layouts');
   const result: SavedLayout[] = stored ? JSON.parse(stored) : [];

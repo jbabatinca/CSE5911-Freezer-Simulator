@@ -1,7 +1,7 @@
 # Training Mode
 
 In User Mode, choose a saved question set under **Training Mode**, then select
-**Open set**. Find the requested rack, box, or specimen position in its source
+**Open set**. Find the requested rack, box, or sample position in its source
 layout. Expand racks and boxes to reach nested targets.
 
 - A correct answer within three attempts earns one point.
@@ -20,8 +20,8 @@ layout. Expand racks and boxes to reach nested targets.
 
 The persisted types are in `src/models/QuestionSet.ts`. A question references a
 `targetType` (`rack`, `box`, or `sample`) and a `targetId` from its set's `layoutId`.
-For specimen questions, `targetId` is the occupied **position ID**, not the sample
-ID: the same specimen may be stored in multiple positions.
+For sample questions, `targetId` is the occupied **position ID**, not the sample
+ID: the same sample may be stored in multiple positions.
 
 `src/services/QuestionTargetService.ts` provides storage-independent functions:
 
