@@ -1,15 +1,14 @@
-/** TutorialTrainingModeView.ts - runs and renders a three-level rack, box, and sample tutorial using a fixed practice freezer. */
+/** TutorialTrainingModeView.ts - runs and renders a ten-level (L1-L10) tutorial that asks one randomly drawn question per level, using a fixed practice freezer. */
 import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
 
-/** Identifies the rack (1), box (2), or sample (3) stage of the tutorial. */
-type TutorialLevel = 1 | 2 | 3;
+/** Identifies which kind of freezer item a tutorial question asks the user to find. */
+type TutorialTargetType = 'rack' | 'box' | 'sample';
 /** Restricts feedback to the supported answer, progress, and completion display states. */
 type FeedbackKind = 'correct' | 'incorrect' | 'progress' | 'complete';
 
-/** Describes a practice sample with its id, name, and one-based position within a box. */
+/** Describes a practice sample by its id and one-based position within a box. */
 interface TutorialSample {
     id: string;
-    name: string;
     row: number;
     column: number;
 }
@@ -32,91 +31,109 @@ interface TutorialRack {
     boxes: TutorialBox[];
 }
 
-/** Holds a target id, prompt, selection instructions, and readable answer address for the current question. */
+/** Names one stored question by the kind and id of the practice target it asks for. */
+export interface TutorialQuestionDefinition {
+    type: TutorialTargetType;
+    targetId: string;
+}
+
+/** Holds a target type and id, prompt, selection instructions, and readable answer address for a question. */
 interface TutorialQuestion {
+    type: TutorialTargetType;
     targetId: string;
     prompt: string;
     detail: string;
     address: string;
 }
 
-// Practice data is independent of saved layouts; tutorial progress stays in memory for this page session.
-const tutorialShelf = {
-    id: 'tutorial-shelf-1',
-    name: 'Shelf 1',
-    racks: [
-        {
-            id: 'tutorial-rack-1',
-            name: 'Project 1',
-            color: '#2878b8',
-            boxes: [
-                {
-                    id: 'tutorial-box-1',
-                    name: 'P1B1',
-                    row: 1,
-                    column: 1,
-                    color: '#42a889',
-                    samples: [
-                        { id: 'tutorial-sample-1001', name: 'Sample 1001', row: 1, column: 1 },
-                        { id: 'tutorial-sample-1002', name: 'Sample 1002', row: 3, column: 2 },
-                        { id: 'tutorial-sample-1003', name: 'Sample 1003', row: 4, column: 4 }
-                    ]
-                },
-                {
-                    id: 'tutorial-box-2',
-                    name: 'P1B2',
-                    row: 1,
-                    column: 2,
-                    color: '#d2a82b',
-                    samples: [
-                        { id: 'tutorial-sample-1004', name: 'Sample 1004', row: 2, column: 3 },
-                        { id: 'tutorial-sample-1005', name: 'Sample 1005', row: 5, column: 5 },
-                        { id: 'tutorial-sample-1006', name: 'Sample 1006', row: 8, column: 7 }
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'tutorial-rack-2',
-            name: 'Project 2',
-            color: '#bd692f',
-            boxes: [
-                {
-                    id: 'tutorial-box-3',
-                    name: 'P2B1',
-                    row: 1,
-                    column: 1,
-                    color: '#8c73b5',
-                    samples: [
-                        { id: 'tutorial-sample-2001', name: 'Sample 2001', row: 2, column: 1 },
-                        { id: 'tutorial-sample-2002', name: 'Sample 2002', row: 4, column: 6 },
-                        { id: 'tutorial-sample-2003', name: 'Sample 2003', row: 6, column: 8 }
-                    ]
-                },
-                {
-                    id: 'tutorial-box-4',
-                    name: 'P2B2',
-                    row: 1,
-                    column: 2,
-                    color: '#d97945',
-                    samples: [
-                        { id: 'tutorial-sample-2004', name: 'Sample 2004', row: 1, column: 9 },
-                        { id: 'tutorial-sample-2005', name: 'Sample 2005', row: 5, column: 1 },
-                        { id: 'tutorial-sample-2006', name: 'Sample 2006', row: 9, column: 9 }
-                    ]
-                }
-            ]
-        }
-    ] satisfies TutorialRack[]
+// IDs include the shelf because project names recur throughout the freezer.
+const rackId = (shelf: number, rack: number): string => `tutorial-rack-${shelf}-${rack}`;
+const boxId = (shelf: number, rack: number, box: number): string => `tutorial-box-${shelf}-${rack}-${box}`;
+const sampleId = (shelf: number, rack: number, box: number, position: number): string => `tutorial-sample-${shelf}-${rack}-${box}-${position}`;
+
+const projectColors: Record<string, string> = {
+    INSPIR: '#2878b8', PROMIS: '#bd692f', EPIC: '#8c73b5', MOMI: '#d2a82b',
+    'Project 1': '#318272', 'Project 2': '#c77b8f', 'Project 3': '#42a889'
 };
 
-const levels = [
-    { level: 1 as const, title: 'Find the rack' },
-    { level: 2 as const, title: 'Find the box' },
-    { level: 3 as const, title: 'Find the sample' }
+const shelfProjects = [
+    ['INSPIR', 'PROMIS'],
+    ['Project 1', 'EPIC', 'MOMI'],
+    ['MOMI', 'EPIC', 'INSPIR', 'PROMIS'],
+    ['PROMIS', 'Project 2', 'INSPIR', 'EPIC', 'Project 3', 'MOMI']
 ];
 
-let currentLevel: TutorialLevel = 1;
+// Shelves grow denser from top to bottom; even the fullest sample grid retains empty positions.
+const tutorialShelves = shelfProjects.map((projects, shelfIndex) => {
+    const shelfNumber = shelfIndex + 1;
+    const boxCount = 2 ** shelfNumber;
+    return {
+        id: `tutorial-shelf-${shelfNumber}`,
+        name: `Shelf ${shelfNumber}`,
+        racks: projects.map((name, rackIndex): TutorialRack => {
+            const rackNumber = rackIndex + 1;
+            const color = projectColors[name]!;
+            const sampleCount = [3, 10, 20, 36][shelfIndex]! + rackIndex;
+            return {
+                id: rackId(shelfNumber, rackNumber),
+                name,
+                color,
+                boxes: Array.from({ length: boxCount }, (_, boxIndex): TutorialBox => {
+                    const boxNumber = boxIndex + 1;
+                    const positions = Array.from({ length: FREEZER_LAYOUT_LIMITS.maxPositionsPerBox }, (_, index) => index);
+                    // Draw without replacement once per page load so coordinates stay stable during a run.
+                    for (let index = 0; index < sampleCount; index++) {
+                        const selected = index + Math.floor(Math.random() * (positions.length - index));
+                        [positions[index], positions[selected]] = [positions[selected]!, positions[index]!];
+                    }
+                    return {
+                        id: boxId(shelfNumber, rackNumber, boxNumber),
+                        name: `Box ${boxNumber}`,
+                        row: Math.floor(boxIndex / FREEZER_LAYOUT_LIMITS.rackColumns) + 1,
+                        column: boxIndex % FREEZER_LAYOUT_LIMITS.rackColumns + 1,
+                        color,
+                        samples: Array.from({ length: sampleCount }, (_, sampleIndex): TutorialSample => ({
+                            id: sampleId(shelfNumber, rackNumber, boxNumber, sampleIndex + 1),
+                            row: Math.floor(positions[sampleIndex]! / FREEZER_LAYOUT_LIMITS.boxColumns) + 1,
+                            column: positions[sampleIndex]! % FREEZER_LAYOUT_LIMITS.boxColumns + 1
+                        }))
+                    };
+                })
+            };
+        })
+    };
+});
+
+/** Number of levels (L1-L10) in one tutorial run; each level shows exactly one question. */
+export const TUTORIAL_LEVEL_COUNT = 10;
+
+const rackQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 'rack', targetId });
+const boxQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 'box', targetId });
+const sampleQuestion = (targetId: string): TutorialQuestionDefinition => ({ type: 'sample', targetId });
+
+/** Stores the three candidate questions for each level, indexed by level number minus one; one is drawn per level each run. */
+export const TUTORIAL_QUESTION_BANK: readonly (readonly TutorialQuestionDefinition[])[] = [
+    [rackQuestion(rackId(1, 1)), rackQuestion(rackId(1, 2)), rackQuestion(rackId(2, 1))],
+    [rackQuestion(rackId(2, 2)), rackQuestion(rackId(3, 1)), rackQuestion(rackId(4, 5))],
+    [boxQuestion(boxId(1, 1, 1)), boxQuestion(boxId(2, 2, 2)), boxQuestion(boxId(3, 1, 5))],
+    [boxQuestion(boxId(2, 1, 4)), boxQuestion(boxId(3, 3, 7)), boxQuestion(boxId(4, 2, 10))],
+    [boxQuestion(boxId(3, 4, 8)), boxQuestion(boxId(4, 3, 15)), boxQuestion(boxId(4, 6, 16))],
+    [sampleQuestion(sampleId(1, 1, 1, 1)), sampleQuestion(sampleId(2, 2, 2, 9)), sampleQuestion(sampleId(3, 1, 3, 18))],
+    [sampleQuestion(sampleId(2, 1, 4, 10)), sampleQuestion(sampleId(3, 2, 5, 20)), sampleQuestion(sampleId(4, 2, 6, 30))],
+    [sampleQuestion(sampleId(3, 1, 8, 20)), sampleQuestion(sampleId(3, 4, 2, 23)), sampleQuestion(sampleId(4, 4, 11, 35))],
+    [sampleQuestion(sampleId(3, 3, 4, 22)), sampleQuestion(sampleId(4, 3, 13, 36)), sampleQuestion(sampleId(4, 5, 15, 40))],
+    [sampleQuestion(sampleId(4, 1, 16, 36)), sampleQuestion(sampleId(4, 4, 14, 39)), sampleQuestion(sampleId(4, 6, 16, 41))]
+];
+
+const LEVEL_TITLES: Record<TutorialTargetType, string> = {
+    rack: 'Find the rack',
+    box: 'Find the box',
+    sample: 'Find the sample'
+};
+
+// One-based level number; questions are drawn once per run, not per level.
+let currentLevel = 1;
+let sessionQuestions: TutorialQuestion[] = [];
 let wrongAnswersThisLevel = 0;
 let currentQuestion: TutorialQuestion | null = null;
 let selectedTargetId: string | null = null;
@@ -144,14 +161,14 @@ function choose<T>(items: T[]): T {
     return items[Math.floor(Math.random() * items.length)]!;
 }
 
-/** Takes no arguments and returns all practice boxes paired with their containing racks. */
-function getBoxes(): { rack: TutorialRack; box: TutorialBox }[] {
-    return tutorialShelf.racks.flatMap(rack => rack.boxes.map(box => ({ rack, box })));
+/** Returns practice boxes with their containing shelves and racks. */
+function getBoxes() {
+    return tutorialShelves.flatMap(shelf => shelf.racks.flatMap(rack => rack.boxes.map(box => ({ shelf, rack, box }))));
 }
 
-/** Takes no arguments and returns all practice samples paired with their containing racks and boxes. */
-function getSamples(): { rack: TutorialRack; box: TutorialBox; sample: TutorialSample }[] {
-    return getBoxes().flatMap(({ rack, box }) => box.samples.map(sample => ({ rack, box, sample })));
+/** Returns practice samples with their containing shelves, racks, and boxes. */
+function getSamples() {
+    return getBoxes().flatMap(({ shelf, rack, box }) => box.samples.map(sample => ({ shelf, rack, box, sample })));
 }
 
 /** Converts a sample's one-based row and column into a position label such as A1 and returns it. */
@@ -159,43 +176,59 @@ function samplePosition(sample: TutorialSample): string {
     return `${String.fromCharCode(64 + sample.row)}${sample.column}`;
 }
 
-/** Takes no arguments, chooses a target for the current level and resets question timing and selection, and returns nothing. */
-function startQuestion(): void {
-    if (currentLevel === 1) {
-        const rack = choose(tutorialShelf.racks);
-        currentQuestion = {
-            targetId: rack.id,
-            prompt: `Find ${rack.name}`,
+/** Takes a stored question definition and returns the prompt, instructions, and answer address built from the practice freezer. */
+function buildQuestion(definition: TutorialQuestionDefinition): TutorialQuestion {
+    const { type, targetId } = definition;
+    if (type === 'rack') {
+        const shelf = tutorialShelves.find(item => item.racks.some(rack => rack.id === targetId))!;
+        const rack = shelf.racks.find(item => item.id === targetId)!;
+        return {
+            type,
+            targetId,
+            prompt: `Find ${shelf.name} / ${rack.name}`,
             detail: 'Select the matching rack.',
-            address: `${tutorialShelf.name} / ${rack.name}`
-        };
-    } else if (currentLevel === 2) {
-        const { rack, box } = choose(getBoxes());
-        currentQuestion = {
-            targetId: box.id,
-            prompt: `Find ${box.name}`,
-            detail: 'Select the matching box.',
-            address: `${tutorialShelf.name} / ${rack.name} / ${box.name}`
-        };
-    } else {
-        const { rack, box, sample } = choose(getSamples());
-        currentQuestion = {
-            targetId: sample.id,
-            prompt: `Find ${sample.name}`,
-            detail: 'Select the matching sample position.',
-            address: `${tutorialShelf.name} / ${rack.name} / ${box.name} / Position ${samplePosition(sample)}`
+            address: `${shelf.name} / ${rack.name}`
         };
     }
+    if (type === 'box') {
+        const { shelf, rack, box } = getBoxes().find(item => item.box.id === targetId)!;
+        return {
+            type,
+            targetId,
+            prompt: `Find ${shelf.name} / ${rack.name} / ${box.name}`,
+            detail: 'Select the matching box.',
+            address: `${shelf.name} / ${rack.name} / ${box.name}`
+        };
+    }
+    const { shelf, rack, box, sample } = getSamples().find(item => item.sample.id === targetId)!;
+    const address = `${shelf.name} / ${rack.name} / ${box.name} / ${samplePosition(sample)}`;
+    return {
+        type,
+        targetId,
+        prompt: `Find ${address}`,
+        detail: 'Select the matching sample position.',
+        address
+    };
+}
 
+/** Takes no arguments and returns one randomly drawn question for each level, in level order. */
+function pickSessionQuestions(): TutorialQuestion[] {
+    return TUTORIAL_QUESTION_BANK.map(candidates => buildQuestion(choose([...candidates])));
+}
+
+/** Takes no arguments, shows the session's question for the current level and resets question timing and selection, and returns nothing. */
+function startQuestion(): void {
+    currentQuestion = sessionQuestions[currentLevel - 1]!;
     questionStartedAt = Date.now();
     selectedTargetId = null;
     expandedRackId = null;
     expandedBoxId = null;
 }
 
-/** Takes no arguments, resets tutorial progress and total timing and starts a level-one question, and returns nothing. */
+/** Takes no arguments, draws a fresh question for every level, resets progress and total timing, and starts level one; returns nothing. */
 export function startTrainingTutorial(): void {
     currentLevel = 1;
+    sessionQuestions = pickSessionQuestions();
     wrongAnswersThisLevel = 0;
     tutorialStartedAt = Date.now();
     feedbackMessage = '';
@@ -211,9 +244,8 @@ export function answerTrainingTarget(targetId: string): void {
     const elapsed = ((Date.now() - questionStartedAt) / 1000).toFixed(1);
 
     if (targetId === currentQuestion.targetId) {
-        const finishedLevel = currentLevel;
         wrongAnswersThisLevel = 0;
-        if (finishedLevel === 3) {
+        if (currentLevel === TUTORIAL_LEVEL_COUNT) {
             tutorialComplete = true;
             feedbackKind = 'complete';
             const totalElapsed = ((Date.now() - tutorialStartedAt) / 1000).toFixed(1);
@@ -221,19 +253,20 @@ export function answerTrainingTarget(targetId: string): void {
             return;
         }
 
-        currentLevel = (finishedLevel + 1) as TutorialLevel;
+        currentLevel++;
         feedbackKind = 'correct';
         feedbackMessage = `Correct. ${currentQuestion.address}. Answered in ${elapsed} seconds. Advancing to L${currentLevel}.`;
         startQuestion();
         return;
     }
 
-    // Three misses within one level restart at L1; the overall tutorial timer keeps running.
+    // Three misses within one level restart at L1 with newly drawn questions so the revealed answer is not replayed; the overall timer keeps running.
     wrongAnswersThisLevel++;
     if (wrongAnswersThisLevel === 3) {
         feedbackKind = 'progress';
         feedbackMessage = `Three incorrect answers. Returning to L1. The answer was ${currentQuestion.address}.`;
         currentLevel = 1;
+        sessionQuestions = pickSessionQuestions();
         wrongAnswersThisLevel = 0;
         startQuestion();
         return;
@@ -275,7 +308,7 @@ function renderSampleGrid(box: TutorialBox, rack: TutorialRack): string {
                 continue;
             }
             const label = samplePosition(sample);
-            cells += `<button type="button" class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${escapeHtml(sample.id)}" aria-label="${escapeHtml(sample.name)}, position ${label}" title="${escapeHtml(sample.name)}">${label}</button>`;
+            cells += `<button type="button" class="tutorial-sample-target${targetClass(sample.id)}" data-training-target="${escapeHtml(sample.id)}" aria-label="Position ${label}" title="Position ${label}">${label}</button>`;
         }
     }
     return `<div class="tutorial-sample-grid" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${getReadableTextColor(boxColor)}">${cells}</div>`;
@@ -287,11 +320,11 @@ function getBoxColor(box: TutorialBox, rack: TutorialRack): string {
     return isHexColor(rack.color) ? rack.color : '#FFFFFF';
 }
 
-/** Takes a box and its rack and returns an answer button at L2 or an expansion button at L3. */
+/** Takes a box and its rack and returns an answer button for box questions or an expansion button for sample questions. */
 function renderBox(box: TutorialBox, rack: TutorialRack): string {
     const boxColor = getBoxColor(box, rack);
     const boxForeground = getReadableTextColor(boxColor);
-    if (currentLevel === 2) {
+    if (currentQuestion?.type === 'box') {
         return `<button type="button" class="tutorial-box-target${targetClass(box.id)}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-target="${escapeHtml(box.id)}">${escapeHtml(box.name)}</button>`;
     }
 
@@ -302,11 +335,12 @@ function renderBox(box: TutorialBox, rack: TutorialRack): string {
 /** Takes a practice rack and returns its answer-button or expandable contents HTML for the current level. */
 function renderRack(rack: TutorialRack): string {
     const isExpanded = expandedRackId === rack.id;
-    const contents = currentLevel > 1 && isExpanded
+    const isRackQuestion = currentQuestion?.type === 'rack';
+    const contents = !isRackQuestion && isExpanded
         ? renderBoxGrid(rack)
         : '';
 
-    if (currentLevel === 1) {
+    if (isRackQuestion) {
         return `
             <li class="tutorial-rack" style="--tutorial-rack-color: ${isHexColor(rack.color) ? rack.color : '#FFFFFF'}">
                 <button type="button" class="tutorial-rack-target${targetClass(rack.id)}" data-training-target="${escapeHtml(rack.id)}">
@@ -344,7 +378,7 @@ function renderBoxGrid(rack: TutorialRack): string {
         }
     }
 
-    const expandedBox = currentLevel === 3 ? rack.boxes.find(box => box.id === expandedBoxId) : undefined;
+    const expandedBox = currentQuestion?.type === 'sample' ? rack.boxes.find(box => box.id === expandedBoxId) : undefined;
     const details = expandedBox
         ? `<section class="question-set-box-details" aria-label="Box positions"><h3>${escapeHtml(expandedBox.name)} — positions</h3>${renderSampleGrid(expandedBox, rack)}</section>`
         : '';
@@ -369,24 +403,22 @@ function getReadableTextColor(hexColor: string): string {
 function renderTutorialLayout(): string {
     return `
         <section class="tutorial-freezer" aria-label="Tutorial freezer">
-            <section class="tutorial-shelf" aria-label="${tutorialShelf.name}">
+            ${tutorialShelves.map(shelf => `<section class="tutorial-shelf" aria-label="${escapeHtml(shelf.name)}">
                 <header class="tutorial-shelf-header">
-                    <span class="tutorial-shelf-label">SHELF</span>
-                    <h2>${tutorialShelf.name}</h2>
+                    <span class="tutorial-shelf-label"></span>
+                    <h2>${escapeHtml(shelf.name)}</h2>
                 </header>
-                <ul class="tutorial-racks">${tutorialShelf.racks.map(renderRack).join('')}</ul>
-            </section>
+                <ul class="tutorial-racks">${shelf.racks.map(renderRack).join('')}</ul>
+            </section>`).join('')}
         </section>
     `;
 }
 
-/** Takes no arguments and returns three level indicators reflecting the current stage and completion state. */
+/** Takes no arguments and returns the ten L1-L10 level indicators reflecting the current stage and completion state. */
 function renderLevelProgress(): string {
-    return [
-        { level: 1, title: 'Find the rack' },
-        { level: 2, title: 'Find the box' },
-        { level: 3, title: 'Find the sample' }
-    ].map(({ level, title }) => {
+    return sessionQuestions.map((question, index) => {
+        const level = index + 1;
+        const title = LEVEL_TITLES[question.type];
         const stateClass = level === currentLevel ? ' is-current' : level < currentLevel || tutorialComplete ? ' is-complete' : '';
         const current = level === currentLevel && !tutorialComplete;
         return `<div class="tutorial-level${stateClass}" aria-current="${current ? 'step' : 'false'}"><strong>L${level}</strong><span>${title}</span></div>`;
@@ -395,7 +427,7 @@ function renderLevelProgress(): string {
 
 /** Takes no arguments and returns tutorial HTML, starting a question if needed and showing completion when finished. */
 export function TutorialTrainingModeView(): string {
-    if (!currentQuestion) startQuestion();
+    if (!currentQuestion) startTrainingTutorial();
 
     return `
         <section class="training-view tutorial-training physical-freezer-layout">
@@ -406,7 +438,7 @@ export function TutorialTrainingModeView(): string {
                 </div>
                 ${!tutorialComplete ? `<p class="tutorial-strikes"><strong>${wrongAnswersThisLevel}</strong> / 3 misses at L${currentLevel}</p>` : ''}
             </header>
-            <nav class="tutorial-levels" aria-label="Tutorial levels">${renderLevelProgress()}</nav>
+            <nav class="tutorial-levels tutorial-levels-compact" aria-label="Tutorial levels">${renderLevelProgress()}</nav>
             ${tutorialComplete ? `
                 <section id="training-question-panel" class="tutorial-completion" tabindex="-1" aria-live="polite">
                     <p class="training-feedback is-correct" role="status">${escapeHtml(feedbackMessage)}</p>
@@ -414,7 +446,8 @@ export function TutorialTrainingModeView(): string {
                 </section>
             ` : `
                 <section id="training-question-panel" class="training-question" tabindex="-1" aria-live="polite">
-                    <p class="training-prompt">LEVEL L${currentLevel} · ${['Find the rack', 'Find the box', 'Find the sample'][currentLevel - 1]!.toUpperCase()}</p>
+                    <p class="training-prompt">LEVEL L${currentLevel} · ${LEVEL_TITLES[currentQuestion!.type].toUpperCase()}</p>
+                    <p class="training-prompt-detail">Question ${currentLevel} of ${TUTORIAL_LEVEL_COUNT}</p>
                     <h2>${escapeHtml(currentQuestion!.prompt)}</h2>
                     <p class="training-prompt-detail">${escapeHtml(currentQuestion!.detail)}</p>
                     ${feedbackMessage ? `<p class="training-feedback ${feedbackKind === 'incorrect' ? 'is-incorrect' : 'is-correct'}" role="status">${escapeHtml(feedbackMessage)}</p>` : ''}
