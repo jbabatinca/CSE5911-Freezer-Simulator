@@ -405,7 +405,7 @@ function renderTutorialLayout(): string {
         <section class="tutorial-freezer" aria-label="Tutorial freezer">
             ${tutorialShelves.map(shelf => `<section class="tutorial-shelf" aria-label="${escapeHtml(shelf.name)}">
                 <header class="tutorial-shelf-header">
-                    <span class="tutorial-shelf-label">SHELF</span>
+                    <span class="tutorial-shelf-label"></span>
                     <h2>${escapeHtml(shelf.name)}</h2>
                 </header>
                 <ul class="tutorial-racks">${shelf.racks.map(renderRack).join('')}</ul>
