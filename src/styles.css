@@ -3,9 +3,13 @@
 /* Theme variables: Light defaults and Dark overrides selected by the root data-theme attribute. */
 :root {
   color-scheme: light;
+  --scarlet: #ba0c2f;
+  --scarlet-dark: #70071c;
+  --osu-gray: #a7b1b7;
   --primary: #ba0c2f;
   --primary-dark: #70071c;
-  --teal: #11776e;
+  --accent: #ba0c2f;
+  --teal: #ba0c2f;
   --text: #212325;
   --muted: #646a6e;
   --border: #cfd4d8;
@@ -30,6 +34,8 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --primary: #fff;
+  --accent: #e65a72;
+  --teal: #e65a72;
   --text: #f6f7f8;
   --muted: #bfc6cb;
   --border: #646a6e;
@@ -73,21 +79,51 @@ body {
 
 .app-header {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.brand-banner {
+  display: block;
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.brand-banner-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-banner-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-banner-dark {
+  display: block;
+  background: #161819;
+}
+
+.title-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
 }
 
 .app-header h1 {
   margin-top: 0;
   margin-bottom: 0;
   padding-left: 14px;
-  border-left: 6px solid #ba0c2f;
+  border-left: 6px solid var(--scarlet);
   font-size: 22px;
   letter-spacing: -0.5px;
 }
+
 
 /* Light/Dark theme buttons and selected states. */
 .theme-control {
@@ -398,13 +434,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training) {
-  border-color: var(--teal);
-  color: var(--teal);
-  background: var(--success-background);
+  border-color: var(--action);
+  color: #fff;
+  background: var(--action);
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training):hover {
-  background: var(--success-background);
+  border-color: var(--action-hover);
+  background: var(--action-hover);
 }
 
 /* Navigation and saved-layout dashboard grid. */
@@ -478,6 +515,30 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .modal-content h3 {
   margin: 0 0 12px;
   font-size: 24px;
+}
+
+.admin-password-modal {
+  gap: 10px;
+}
+
+.admin-password-brand {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  margin: 0;
+  object-fit: contain;
+}
+
+.admin-password-brand-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .admin-password-brand-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .admin-password-brand-dark {
+  display: block;
 }
 
 .modal-content input {
@@ -587,6 +648,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (max-width: 600px) {
   body {
     padding: 12px;
+  }
+
+  .brand-banner {
+    height: 56px;
+  }
+
+  .title-row {
+    align-items: flex-start;
   }
 
   .freezer {

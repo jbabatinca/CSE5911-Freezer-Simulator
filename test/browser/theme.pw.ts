@@ -3,6 +3,9 @@ import { makeLayout } from '../helpers/questionSets.js';
 
 test('home page offers only sun and moon icons, with Light as the default', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('.brand-banner-light')).toBeVisible();
+  await expect.poll(() => page.locator('.brand-banner-light').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator('.brand-banner-light')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   const controls = page.getByRole('group', { name: 'Color theme' });
   const sun = controls.getByRole('button', { name: 'Switch to Light Mode' });
   const moon = controls.getByRole('button', { name: 'Switch to Dark Mode' });
@@ -16,6 +19,9 @@ test('home page offers only sun and moon icons, with Light as the default', asyn
   await moon.focus();
   await moon.press('Space');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('.brand-banner-dark')).toBeVisible();
+  await expect(page.locator('.brand-banner-light')).toBeHidden();
+  await expect.poll(() => page.locator('.brand-banner-dark').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   await expect(moon).toHaveAttribute('aria-pressed', 'true');
   await expect(sun).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(22, 24, 25)');
@@ -25,6 +31,8 @@ test('home page offers only sun and moon icons, with Light as the default', asyn
   await sun.focus();
   await sun.press('Enter');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('.brand-banner-light')).toBeVisible();
+  await expect(page.locator('.brand-banner-dark')).toBeHidden();
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(239, 241, 242)');
 });
 
@@ -46,6 +54,19 @@ test('icon choices survive reload and are independent of the system theme', asyn
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test('admin password dialog switches logo variants with the selected theme', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#btn-admin-mode').click();
+  await expect(page.locator('.admin-password-brand-light')).toBeVisible();
+  await expect.poll(() => page.locator('.admin-password-brand-light').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await page.locator('#btn-cancel-admin').click();
+  await page.getByRole('button', { name: 'Switch to Dark Mode' }).click();
+  await page.locator('#btn-admin-mode').click();
+  await expect(page.locator('.admin-password-brand-dark')).toBeVisible();
+  await expect(page.locator('.admin-password-brand-light')).toBeHidden();
+  await expect.poll(() => page.locator('.admin-password-brand-dark').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+});
+
 test('dark theme covers dialogs, user home, layout dashboard, and freezer cards', async ({ page }) => {
   await page.addInitScript(layout => {
     localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
@@ -54,6 +75,9 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
   await page.getByRole('button', { name: 'Switch to Dark Mode' }).click();
   await page.locator('#btn-admin-mode').click();
   await expect(page.locator('.modal-content')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
+  await expect(page.locator('.admin-password-brand-dark')).toBeVisible();
+  await expect(page.locator('.admin-password-brand-light')).toBeHidden();
+  await expect.poll(() => page.locator('.admin-password-brand-dark').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   await expect(page.locator('#admin-password-input')).toHaveCSS('background-color', 'rgb(46, 49, 51)');
   await expect(page.locator('#admin-password-input')).toHaveCSS('color', 'rgb(246, 247, 248)');
   await page.locator('#btn-cancel-admin').click();
