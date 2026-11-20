@@ -627,10 +627,6 @@ button.layout-slot {
   background: var(--surface);
 }
 
-#freezer-shelves > .shelf {
-  border-bottom-color: var(--action);
-}
-
 .shelf h3 {
   margin: 0 0 12px;
 }
@@ -1740,10 +1736,6 @@ button.layout-slot {
   border-color: var(--border);
   border-left: 6px solid var(--item-color);
   background: color-mix(in srgb, var(--item-color) 8%, var(--surface));
-}
-
-#freezer-shelves .rack.color-coded {
-  border-left-color: var(--scarlet);
 }
 
 .layout-color-trigger {

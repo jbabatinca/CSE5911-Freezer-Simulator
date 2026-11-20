@@ -99,6 +99,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
   }
   const shelves = layout.freezerData.shelves;
   const expandedShelfIds = getExpandedShelfIds();
+  const allShelvesExpanded = shelves.every(shelf => expandedShelfIds.has(shelf.id));
   const expandedRackId = getExpandedRackId();
   const expandedBoxId = getExpandedBoxId();
   const searchQuery = options.searchQuery ?? '';
@@ -134,7 +135,11 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
         <h2 id="freezer-title" tabindex="-1" class="${selected?.type === 'layout' ? 'layout-search-target' : ''}">${escapeHtml(layout.name)}</h2>
         <p>Front view — shelves are shown from top to bottom.</p>
         <div id="editor-message" class="editor-message" role="alert"></div>
-        ${shelves.length > 0 ? '<button type="button" id="btn-expand-all-shelves" aria-controls="freezer-shelves">Expand All Shelves</button>' : ''}
+        ${shelves.length > 0 ? `
+          <button type="button" id="btn-expand-all-shelves" aria-controls="freezer-shelves" aria-expanded="${allShelvesExpanded}">
+            ${allShelvesExpanded ? 'Collapse All Shelves' : 'Expand All Shelves'}
+          </button>
+        ` : ''}
         <section id="freezer-shelves" class="freezer" aria-labelledby="freezer-title">
           ${shelves.length === 0
             ? '<p>No shelves in this freezer.</p>'

@@ -25,9 +25,10 @@ async function openFreezer(page: Page, role: 'user' | 'admin') {
 }
 
 for (const role of ['user', 'admin'] as const) {
-  test(`expands all shelves and allows independent toggling in ${role} mode`, async ({ page }) => {
+  test(`toggles all shelves and follows individual shelf changes in ${role} mode`, async ({ page }) => {
     await openFreezer(page, role);
     const expandAll = page.getByRole('button', { name: 'Expand All Shelves' });
+    const collapseAll = page.getByRole('button', { name: 'Collapse All Shelves' });
     const topToggle = page.getByRole('button', { name: 'Toggle Top shelf' });
     const topRack = page.locator('#rack-layout-1-rack-1');
     const bottomRack = page.locator('#rack-layout-1-rack-2');
@@ -39,18 +40,29 @@ for (const role of ['user', 'admin'] as const) {
     await expect(bottomRack).toBeHidden();
 
     await expandAll.click();
-    await expect(expandAll).toBeFocused();
+    await expect(collapseAll).toBeFocused();
+    await expect(collapseAll).toHaveAttribute('aria-expanded', 'true');
     await expect(topRack).toBeVisible();
     await expect(bottomRack).toBeVisible();
     await expect(emptyNote).toBeVisible();
 
+    await collapseAll.press('Enter');
+    await expect(expandAll).toBeFocused();
+    await expect(expandAll).toHaveAttribute('aria-expanded', 'false');
+    await expect(topRack).toBeHidden();
+    await expect(bottomRack).toBeHidden();
+    await expect(emptyNote).toBeHidden();
+
+    await expandAll.click();
     await topToggle.press('Enter');
     await expect(topToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(expandAll).toBeVisible();
     await expect(topRack).toBeHidden();
     await expect(bottomRack).toBeVisible();
     await expect(emptyNote).toBeVisible();
     await topToggle.press('Enter');
     await expect(topToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(collapseAll).toBeVisible();
     await expect(topRack).toBeVisible();
     await expect(bottomRack).toBeVisible();
   });

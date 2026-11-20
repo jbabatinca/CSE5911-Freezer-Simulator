@@ -110,11 +110,9 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
 });
 
 test('navigation, history, and freezer controls match the configuration button in both themes', async ({ page }) => {
-  const layout = makeLayout();
-  layout.freezerData.shelves[0]!.racks[1]!.color = '#2878C7';
   await page.addInitScript(layout => {
     localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
-  }, layout);
+  }, makeLayout());
   await page.goto('/');
   await page.locator('#btn-admin-mode').click();
   await page.locator('#admin-password-input').fill('123456');
@@ -160,20 +158,16 @@ test('navigation, history, and freezer controls match the configuration button i
     for (const selector of ['.btn-back', '#btn-expand-all-shelves', '#btn-toggle-layout-search', '#btn-download', '#btn-export-pdf']) {
       await expectScarletButton(selector);
     }
-    await expect(shelf).toHaveCSS('border-bottom-color', 'rgb(186, 12, 47)');
+    const shelfEdgeColor = theme === 'Dark' ? 'rgb(134, 142, 146)' : 'rgb(167, 177, 183)';
+    await expect(shelf).toHaveCSS('border-bottom-color', shelfEdgeColor);
     await expect(shelf).toHaveCSS('border-bottom-width', '5px');
+    await expect(shelf).toHaveCSS('border-top-width', '1px');
     await expect(shelf).toHaveCSS('border-radius', '8px');
     await expect(shelfToggle).toHaveText('▶');
     await expectScarletButton('.btn-toggle-shelf');
     await shelfToggle.press('Enter');
     await expect(shelfToggle).toHaveText('▼');
     await expectScarletButton('.btn-toggle-shelf');
-    for (const rackName of ['Rack 1', 'Rack 2']) {
-      const rack = shelf.getByRole('listitem', { name: rackName });
-      await expect(rack).toHaveCSS('border-left-color', 'rgb(186, 12, 47)');
-      await expect(rack).toHaveCSS('border-left-width', '6px');
-      await expect(rack).toHaveCSS('border-radius', '8px');
-    }
     await shelfToggle.press('Enter');
 
     await search.press('Enter');

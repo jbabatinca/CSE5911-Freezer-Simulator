@@ -1042,7 +1042,13 @@ export function App(): void {
         document.getElementById('btn-expand-all-shelves')?.addEventListener('click', () => {
             const currentLayout = getCurrentEditingLayout();
             if (!currentLayout) return;
-            expandShelves(currentLayout.freezerData.shelves.map(shelf => shelf.id));
+            const shelfIds = currentLayout.freezerData.shelves.map(shelf => shelf.id);
+            const expandedShelfIds = getExpandedShelfIds();
+            if (shelfIds.every(id => expandedShelfIds.has(id))) {
+                setExpandedShelfId(null);
+            } else {
+                expandShelves(shelfIds);
+            }
             render();
             document.getElementById('btn-expand-all-shelves')?.focus();
         });
