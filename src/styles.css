@@ -62,6 +62,8 @@
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   min-height: 100vh;
   padding: 32px 24px;
@@ -73,8 +75,16 @@ body {
 
 .app-header,
 #app {
-  max-width: 1100px;
-  margin-inline: auto;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+#app {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .app-header {
@@ -209,6 +219,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Common screen panels. */
 .home-view, .mode-home-view, .training-view, .layout-dashboard, .freezer-editor {
+  flex: 1;
+  min-width: 0;
   padding: 32px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -384,7 +396,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Landing pages and mode-selection buttons. */
 .home-view {
-  padding: 72px 32px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
   border-top: 5px solid var(--action);
   text-align: center;
   background: linear-gradient(135deg, var(--surface), var(--surface-raised));
@@ -674,6 +691,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     flex-direction: column;
   }
 
+  .question-set-editor-header,
+  .question-set-section-header,
+  .question-set-question-header,
+  .question-set-footer,
+  .question-set-card-actions,
+  .question-set-question-actions {
+    flex-wrap: wrap;
+  }
+
   .layout-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -919,8 +945,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Shared training headings, layout choices, questions, scores, and answer feedback. */
 .training-view {
-  max-width: 1100px;
-  margin: 0 auto;
+  margin: 0;
   color: var(--text);
 }
 
@@ -1119,7 +1144,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Small-screen training headings and questions. */
 @media (max-width: 600px) {
   .training-view {
-    margin: 16px auto;
+    margin: 0;
   }
 
   .training-heading,
@@ -2393,6 +2418,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   body {
+    display: block;
     min-height: 0;
     padding: 0;
     background: #fff;
