@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { makeLayout } from '../helpers/questionSets.js';
+import { makeLayout, makeQuestionSet } from '../helpers/questionSets.js';
 
 test('home page offers only sun and moon icons, with Light as the default', async ({ page }) => {
   await page.goto('/');
@@ -153,5 +153,50 @@ test('navigation and history buttons match the configuration button in both them
       await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
     }
     await expectScarletButton('.btn-back');
+  }
+});
+
+test('Training Mode question-set launcher stays readable and its Open set button matches Configuration Mode', async ({ page }) => {
+  const questionSet = makeQuestionSet();
+  await page.addInitScript(questionSet => {
+    localStorage.setItem('freezer-question-sets', JSON.stringify([questionSet]));
+  }, questionSet);
+  await page.goto('/');
+  await page.locator('#btn-user-mode').click();
+
+  for (const theme of ['Light', 'Dark']) {
+    if (await page.locator('html').getAttribute('data-theme') !== theme.toLowerCase()) {
+      await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
+    }
+
+    const dark = theme === 'Dark';
+    const textColor = dark ? 'rgb(246, 247, 248)' : 'rgb(33, 35, 37)';
+    const mutedColor = dark ? 'rgb(191, 198, 203)' : 'rgb(100, 106, 110)';
+    const surfaceColor = dark ? 'rgb(33, 35, 37)' : 'rgb(255, 255, 255)';
+    const disabledSurface = dark ? 'rgb(63, 68, 67)' : 'rgb(239, 241, 242)';
+    const button = page.locator('#btn-open-question-set');
+    const select = page.locator('#user-question-set-select');
+
+    await expect(page.locator('.user-question-set-launcher h3')).toHaveCSS('color', textColor);
+    await expect(page.locator('.user-question-set-launcher > p').first()).toHaveCSS('color', mutedColor);
+    await expect(page.locator('.user-question-set-launcher label')).toHaveCSS('color', textColor);
+    await expect(select).toHaveCSS('color', textColor);
+    await expect(select).toHaveCSS('background-color', surfaceColor);
+    await expect(select.locator('option').nth(1)).toHaveCSS('color', textColor);
+    await expect(select.locator('option').nth(1)).toHaveCSS('background-color', surfaceColor);
+
+    await select.selectOption('');
+    await expect(button).toBeDisabled();
+    await expect(button).toHaveCSS('background-color', disabledSurface);
+    await expect(button).toHaveCSS('color', mutedColor);
+
+    await select.selectOption(questionSet.id);
+    await expect(button).toBeEnabled();
+    await expect(button).toHaveCSS('background-color', 'rgb(186, 12, 47)');
+    await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await button.hover();
+    await expect(button).toHaveCSS('background-color', 'rgb(112, 7, 28)');
+    await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await page.locator('.app-header h1').hover();
   }
 });
