@@ -3,9 +3,13 @@
 /* Theme variables: Light defaults and Dark overrides selected by the root data-theme attribute. */
 :root {
   color-scheme: light;
+  --scarlet: #ba0c2f;
+  --scarlet-dark: #70071c;
+  --osu-gray: #a7b1b7;
   --primary: #ba0c2f;
   --primary-dark: #70071c;
-  --teal: #11776e;
+  --accent: #ba0c2f;
+  --teal: #ba0c2f;
   --text: #212325;
   --muted: #646a6e;
   --border: #cfd4d8;
@@ -30,6 +34,8 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --primary: #fff;
+  --accent: #e65a72;
+  --teal: #e65a72;
   --text: #f6f7f8;
   --muted: #bfc6cb;
   --border: #646a6e;
@@ -56,6 +62,8 @@
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   min-height: 100vh;
   padding: 32px 24px;
@@ -67,27 +75,65 @@ body {
 
 .app-header,
 #app {
-  max-width: 1100px;
-  margin-inline: auto;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+#app {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .app-header {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.brand-banner {
+  display: block;
+  width: 100%;
+  height: 72px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.brand-banner-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-banner-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-banner-dark {
+  display: block;
+  background: #161819;
+}
+
+.title-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
 }
 
 .app-header h1 {
   margin-top: 0;
   margin-bottom: 0;
   padding-left: 14px;
-  border-left: 6px solid #ba0c2f;
+  border-left: 6px solid var(--scarlet);
   font-size: 22px;
   letter-spacing: -0.5px;
 }
+
 
 /* Light/Dark theme buttons and selected states. */
 .theme-control {
@@ -173,8 +219,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Common screen panels. */
 .home-view, .mode-home-view, .training-view, .layout-dashboard, .freezer-editor {
+  flex: 1;
+  min-width: 0;
   padding: 32px;
   border: 1px solid var(--border);
+  border-top: 5px solid var(--scarlet);
   border-radius: 6px;
   background: var(--surface);
   box-shadow: 0 8px 28px rgb(33 51 75 / 5%);
@@ -348,8 +397,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Landing pages and mode-selection buttons. */
 .home-view {
-  padding: 72px 32px;
-  border-top: 5px solid var(--action);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
   text-align: center;
   background: linear-gradient(135deg, var(--surface), var(--surface-raised));
 }
@@ -384,7 +437,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
-    .btn-save, #btn-create-new) {
+    .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set) {
   border-color: var(--action);
   color: #fff;
   background: var(--action);
@@ -392,19 +446,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
-    .btn-save, #btn-create-new):hover {
+    .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set):hover {
   border-color: var(--action-hover);
   background: var(--action-hover);
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training) {
-  border-color: var(--teal);
-  color: var(--teal);
-  background: var(--success-background);
+  border-color: var(--action);
+  color: #fff;
+  background: var(--action);
 }
 
 :is(#btn-training, #btn-user-mode, #btn-admin-training, #btn-user-training):hover {
-  background: var(--success-background);
+  border-color: var(--action-hover);
+  background: var(--action-hover);
 }
 
 /* Navigation and saved-layout dashboard grid. */
@@ -478,6 +534,30 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .modal-content h3 {
   margin: 0 0 12px;
   font-size: 24px;
+}
+
+.admin-password-modal {
+  gap: 10px;
+}
+
+.admin-password-brand {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  margin: 0;
+  object-fit: contain;
+}
+
+.admin-password-brand-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .admin-password-brand-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .admin-password-brand-dark {
+  display: block;
 }
 
 .modal-content input {
@@ -589,6 +669,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     padding: 12px;
   }
 
+  .brand-banner {
+    height: 56px;
+  }
+
+  .title-row {
+    align-items: flex-start;
+  }
+
   .freezer {
     padding: 8px;
   }
@@ -605,6 +693,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     flex-direction: column;
   }
 
+  .question-set-editor-header,
+  .question-set-section-header,
+  .question-set-question-header,
+  .question-set-footer,
+  .question-set-card-actions,
+  .question-set-question-actions {
+    flex-wrap: wrap;
+  }
+
   .layout-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -617,6 +714,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   .modal-content {
     padding: 24px;
+  }
+
+  .freezer-editor .box-position {
+    border-radius: 2px;
+    font-size: clamp(9px, 2.2vw, 14px);
   }
 }
 /* Keep editor buttons arranged neatly. */
@@ -649,13 +751,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Give an opened rack more room. */
 .rack-expanded {
-  flex: 0 0 380px;
+  flex: 0 0 min(560px, 100%);
+  width: min(560px, 100%);
   min-width: 0;
   max-width: 100%;
 }
 
-/* Allow scrolling through the boxes. */
 .rack-grid {
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -751,6 +854,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Expanded box details and nine-column sample positions. */
 .freezer-editor .box-details {
+  width: min(100%, 520px);
+  min-width: 0;
   margin-top: 16px;
   text-align: left;
 }
@@ -761,8 +866,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .freezer-editor .box-positions-grid {
+  width: min(100%, 520px);
   display: grid;
-  grid-template-columns: repeat(9, minmax(30px, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 2px;
 }
 
@@ -770,7 +876,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
   border: 1px solid var(--border);
   border-radius: 2px;
   background: var(--surface);
@@ -850,8 +958,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Shared training headings, layout choices, questions, scores, and answer feedback. */
 .training-view {
-  max-width: 1100px;
-  margin: 0 auto;
+  margin: 0;
   color: var(--text);
 }
 
@@ -1050,7 +1157,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Small-screen training headings and questions. */
 @media (max-width: 600px) {
   .training-view {
-    margin: 16px auto;
+    margin: 0;
   }
 
   .training-heading,
@@ -1761,6 +1868,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .user-question-set-launcher h3 {
   margin: 0 0 12px;
+  color: var(--text);
+}
+
+.user-question-set-launcher > p {
+  color: var(--muted);
 }
 
 .user-question-set-launcher label,
@@ -1794,6 +1906,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font: inherit;
 }
 
+.user-question-set-controls select option {
+  color: var(--text);
+  background: var(--surface);
+}
+
+#btn-open-question-set:disabled,
 .user-question-set-controls button:disabled,
 .question-set-editor button:disabled {
   border-color: var(--border);
@@ -2324,6 +2442,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
 
   body {
+    display: block;
     min-height: 0;
     padding: 0;
     background: #fff;
