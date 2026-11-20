@@ -55,6 +55,8 @@ import { clearAttempts } from '../services/AttemptHistoryService.js';
 import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 import { searchLayouts } from '../services/LayoutSearchService.js';
 import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
+import { moveRack, moveBox, pasteShelf, pasteRack, pasteBox } from '../services/FreezerService.js';
+import { getClipboard, setClipboard } from '../state/editorState.js';
 
 /**
  * Opens a small modal <dialog> asking the user to type a name (used for renaming and naming new items).
@@ -163,6 +165,114 @@ export function App(): void {
             document.getElementById('question-set-feedback')?.focus();
         }
     }, 250);
+
+    // ----- drag/drop + cut/copy/paste helpers -----
+    let dragging: { kind: 'rack' | 'box'; id: string; row?: number; column?: number } | null = null;
+
+    function showEditorMessage(message: string): void {
+        const el = document.getElementById('editor-message');
+        if (el) el.textContent = message;
+        else alert(message);
+    }
+
+    // Saves and re-renders after a successful move/paste; shows the message (and changes nothing) otherwise.
+    function finishEdit(result: { ok: boolean; message?: string }, layout: SavedLayout): void {
+        if (!result.ok) { showEditorMessage(result.message ?? 'That action is not allowed.'); return; }
+        layout.updatedAt = new Date().toISOString();
+        saveLayout(layout);
+        render();
+    }
+
+    // Where the mouse currently is, stored as ids (not elements) because render() replaces the DOM.
+    let hover: { shelfId?: string; rackId?: string; row?: number; column?: number } = {};
+    document.addEventListener('mouseover', event => {
+        const el = event.target as HTMLElement;
+        const slotEl = el.closest<HTMLElement>('.box-slot.empty[data-row]');
+        hover = {
+            ...(el.closest<HTMLElement>('[data-shelf-id]') ? { shelfId: el.closest<HTMLElement>('[data-shelf-id]')!.dataset.shelfId! } : {}),
+            ...(el.closest<HTMLElement>('[data-rack-id]') ? { rackId: el.closest<HTMLElement>('[data-rack-id]')!.dataset.rackId! } : {}),
+            ...(slotEl ? { row: Number(slotEl.dataset.row), column: Number(slotEl.dataset.column) } : {})
+        };
+    });
+
+        function pasteFromClipboard(): void {
+        const target = getCurrentEditingLayout();
+        const clip = getClipboard();
+        if (!target || !clip) return;
+
+        // The item may come from another freezer; load that layout from storage.
+        const source = clip.layoutId === target.id ? target : getLayout(clip.layoutId);
+        if (!source) { showEditorMessage('The freezer you copied from no longer exists.'); return; }
+
+        let result;
+        if (clip.kind === 'shelf') {
+            const shelfId = hover.shelfId ?? getExpandedShelfId();
+            if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste onto. Create one first with + Add Shelf.'); return; }
+            const destination = target.freezerData.shelves.find(s => s.id === shelfId);
+            if (destination && destination.racks.length > 0 && !confirm(`Replace everything on "${destination.name}"?`)) return;
+            result = pasteShelf(source, target, clip.id, shelfId, clip.mode);
+        } else if (clip.kind === 'rack') {
+
+            const shelfId = hover.shelfId ?? getExpandedShelfId();
+            if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste into.'); return; }
+            result = pasteRack(source, target, shelfId, clip.id, clip.mode);
+        } else {
+            const rackId = hover.rackId ?? getExpandedRackId();
+            if (!rackId) { showEditorMessage('Hover over the rack you want to paste into.'); return; }
+            result = pasteBox(source, target, rackId, clip.id, clip.mode, hover.row, hover.column);
+        }
+
+        if (result.ok) {
+            if (clip.mode === 'cut') setClipboard(null);   // a cut can only be pasted once
+            if (source !== target) {                       // a cut removed it from the other freezer, so save that one too
+                source.updatedAt = new Date().toISOString();
+                saveLayout(source);
+            }
+        }
+        finishEdit(result, target);
+    }
+
+
+    // Remember the last clicked box/rack/shelf. Focus can't be used: render() rebuilds the DOM and drops it.
+    let selectedItem: { kind: 'shelf' | 'rack' | 'box'; id: string } | null = null;
+    document.addEventListener('click', event => {
+        const el = event.target as HTMLElement;
+        if (el.closest('input, textarea, select, .btn-remove, .btn-remove-box')) return;
+        const boxEl = el.closest<HTMLElement>('[data-box-id]');
+        const rackEl = el.closest<HTMLElement>('[data-rack-id]');
+        const shelfEl = el.closest<HTMLElement>('[data-shelf-id]');
+        selectedItem = boxEl ? { kind: 'box', id: boxEl.dataset.boxId! }
+                     : rackEl ? { kind: 'rack', id: rackEl.dataset.rackId! }
+                     : shelfEl ? { kind: 'shelf', id: shelfEl.dataset.shelfId! } : null;
+    }, true);
+
+    document.addEventListener('keydown', event => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        const key = event.key.toLowerCase();
+        if (key !== 'x' && key !== 'c' && key !== 'v') return;
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.matches('input, textarea, select, [contenteditable="true"]')) return;  // keep normal text copy/paste
+        if (!document.getElementById('btn-save')) return;                                  // only in the editable editor
+
+        if (key === 'v') {
+            if (!getClipboard()) return;
+            event.preventDefault();
+            pasteFromClipboard();
+            return;
+        }
+
+        // Cut/copy act on the last clicked box, else rack, else shelf.
+        const layoutId = getCurrentEditingLayout()?.id;
+        const target = selectedItem;
+        if (!target || !layoutId) return;
+        event.preventDefault();
+        setClipboard({ ...target, mode: key === 'x' ? 'cut' : 'copy', layoutId });
+        showEditorMessage(
+            target.kind === 'shelf'
+                ? `${key === 'x' ? 'Cut' : 'Copied'} shelf contents. Hover over another shelf and press Ctrl+V to paste onto it.`
+                : `${key === 'x' ? 'Cut' : 'Copied'} ${target.kind}. Expand the destination and press Ctrl+V.`
+        );
+    });
 
     // Rebuilds the entire page HTML for the current mode and re-attaches listeners.
     // The whole #app is replaced each time, so listeners must be re-added every render.
@@ -1163,5 +1273,56 @@ export function App(): void {
             });
         });
 
+                // ===== DRAG & DROP: reorder racks, move/swap boxes =====
+        document.querySelectorAll<HTMLElement>('[data-rack-id]').forEach(rackEl => {
+            rackEl.addEventListener('dragstart', e => {
+                if ((e.target as HTMLElement).closest('[data-box-id]')) return;   // a box is being dragged, not the rack
+                dragging = { kind: 'rack', id: rackEl.dataset.rackId! };
+                e.dataTransfer?.setData('text/plain', rackEl.dataset.rackId!);
+                rackEl.classList.add('dragging');
+            });
+            rackEl.addEventListener('dragend', () => { dragging = null; rackEl.classList.remove('dragging'); });
+            rackEl.addEventListener('dragover', e => {
+                if (dragging?.kind === 'rack') { e.preventDefault(); rackEl.classList.add('drop-target'); }
+            });
+            rackEl.addEventListener('dragleave', () => rackEl.classList.remove('drop-target'));
+            rackEl.addEventListener('drop', e => {
+                if (dragging?.kind !== 'rack') return;
+                e.preventDefault();
+                const layout = getCurrentEditingLayout();
+                const shelf = layout?.freezerData.shelves.find(s => s.id === getExpandedShelfId());
+                if (!layout || !shelf) return;
+                const toIndex = shelf.racks.findIndex(r => r.id === rackEl.dataset.rackId);
+                finishEdit(moveRack(layout, shelf.id, dragging.id, toIndex), layout);
+                dragging = null;
+            });
+        });
+
+        document.querySelectorAll<HTMLElement>('.box-container[data-box-id]').forEach(boxEl => {
+            boxEl.addEventListener('dragstart', e => {
+                dragging = { kind: 'box', id: boxEl.dataset.boxId!, row: Number(boxEl.dataset.row), column: Number(boxEl.dataset.column) };
+                e.dataTransfer?.setData('text/plain', boxEl.dataset.boxId!);
+                boxEl.classList.add('dragging');
+            });
+            boxEl.addEventListener('dragend', () => { dragging = null; boxEl.classList.remove('dragging'); });
+        });
+
+        // Any slot (filled or empty) is a drop target for a box.
+        document.querySelectorAll<HTMLElement>('.box-grid [data-row]').forEach(slotEl => {
+            slotEl.addEventListener('dragover', e => {
+                if (dragging?.kind === 'box') { e.preventDefault(); slotEl.classList.add('drop-target'); }
+            });
+            slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drop-target'));
+            slotEl.addEventListener('drop', e => {
+                if (dragging?.kind !== 'box') return;
+                e.preventDefault();
+                e.stopPropagation();
+                const layout = getCurrentEditingLayout();
+                const rackId = getExpandedRackId();
+                if (!layout || !rackId) return;
+                finishEdit(moveBox(layout, rackId, dragging.row!, dragging.column!, Number(slotEl.dataset.row), Number(slotEl.dataset.column)), layout);
+                dragging = null;
+            });
+        });
     }
 }

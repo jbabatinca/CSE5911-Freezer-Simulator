@@ -133,14 +133,14 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
       <div class="editor-content">
         <h2 id="freezer-title" tabindex="-1" class="${selected?.type === 'layout' ? 'layout-search-target' : ''}">${escapeHtml(layout.name)}</h2>
         <p>Front view — shelves are shown from top to bottom.</p>
-
+        <div id="editor-message" class="editor-message" role="alert"></div>
         <section class="freezer" aria-labelledby="freezer-title">
           ${shelves.length === 0
             ? '<p>No shelves in this freezer.</p>'
             : shelves.map((shelf, shelfIdx) => {
                 const isExpanded = expandedShelfId === shelf.id;
                 return `
-                  <section id="shelf-${escapeHtml(shelf.id)}" tabindex="-1" class="shelf${selected?.shelfId === shelf.id ? ' layout-search-ancestor' : ''}${selected?.type === 'shelf' && selected.shelfId === shelf.id ? ' layout-search-target' : ''}" aria-label="${escapeHtml(shelf.name)}">
+                  <section id="shelf-${escapeHtml(shelf.id)}" data-shelf-id="${escapeHtml(shelf.id)}" tabindex="-1" class="shelf${selected?.shelfId === shelf.id ? ' layout-search-ancestor' : ''}${selected?.type === 'shelf' && selected.shelfId === shelf.id ? ' layout-search-target' : ''}" aria-label="${escapeHtml(shelf.name)}">
                     <div class="shelf-header">
                       <button id="btn-toggle-shelf-${shelf.id}" class="btn-toggle">
                         ${isExpanded ? '▼' : '▶'}
@@ -159,7 +159,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
                               const rackExpanded = expandedRackId === rack.id;
                               const rackColor = isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
                               return `
-                                <li tabindex="-1" class="rack color-coded${rackExpanded ? ' rack-expanded' : ''}${selected?.rackId === rack.id ? ' layout-search-ancestor' : ''}${selected?.type === 'rack' && selected.rackId === rack.id ? ' layout-search-target' : ''}" id="rack-${escapeHtml(rack.id)}" aria-label="${escapeHtml(rack.name)}" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">
+                                <li ${!readOnly ? `draggable="true" data-rack-id="${escapeHtml(rack.id)}"` : ''} tabindex="-1" class="rack color-coded${rackExpanded ? ' rack-expanded' : ''}${selected?.rackId === rack.id ? ' layout-search-ancestor' : ''}${selected?.type === 'rack' && selected.rackId === rack.id ? ' layout-search-target' : ''}" id="rack-${escapeHtml(rack.id)}" aria-label="${escapeHtml(rack.name)}" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">    
                                   <div class="rack-info">
                                     <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
                                       ${rackExpanded ? '▼' : '▶'}
@@ -208,7 +208,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
         ? slot.box!.color
         : isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
       html += `
-        <div id="box-${escapeHtml(slot.box!.id)}" tabindex="-1" aria-label="${escapeHtml(slot.box!.name)}" class="box-container color-coded${boxExpanded ? ' box-selected' : ''}${selectedBoxId === slot.box!.id ? ' layout-search-ancestor' : ''}${highlightBox && selectedBoxId === slot.box!.id ? ' layout-search-target' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
+        <div id="box-${escapeHtml(slot.box!.id)}" ${!readOnly ? `draggable="true" data-box-id="${escapeHtml(slot.box!.id)}"` : ''} data-row="${slot.row}" data-column="${slot.column}" tabindex="-1" aria-label="${escapeHtml(slot.box!.name)}" class="box-container color-coded${boxExpanded ? ' box-selected' : ''}${selectedBoxId === slot.box!.id ? ' layout-search-ancestor' : ''}${highlightBox && selectedBoxId === slot.box!.id ? ' layout-search-target' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
             ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.filter(p => p.sampleId).length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
           </button>
@@ -219,13 +219,13 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       `;
     } else if (!readOnly) {
       html += `
-        <div class="box-slot empty">
+        <div class="box-slot empty" data-row="${slot.row}" data-column="${slot.column}" tabindex="-1">
           <button id="btn-add-box-${slot.row}-${slot.column}" class="btn-add" aria-label="Add box at row ${slot.row}, column ${slot.column}">+</button>
         </div>
       `;
     } else {
       html += `
-        <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}">
+        <div class="box-slot empty" id="box-slot-${slot.row}-${slot.column}" data-row="${slot.row}" data-column="${slot.column}">
         </div>
       `;
     }
