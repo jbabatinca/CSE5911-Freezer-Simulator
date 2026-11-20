@@ -19,6 +19,7 @@ export function setCurrentEditingLayout(layout: SavedLayout | null): void {
 /** Takes no arguments and returns an unsaved, unnamed layout with no shelves or samples and fresh ISO timestamps. */
 export function createNewEmptyLayout(): SavedLayout {
     const id = generateLayoutId();
+    const now = new Date().toISOString();
     return {
         id,
         name: 'Unnamed Layout',
@@ -29,7 +30,7 @@ export function createNewEmptyLayout(): SavedLayout {
             shelves: [],
             samples: [],
         },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
     };
 }

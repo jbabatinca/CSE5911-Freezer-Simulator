@@ -136,7 +136,7 @@
     },             
     "box": {
       "title": "FreezerBox",
-      "description": "A box can contain zero to 81 positions.",
+      "description": "A box has one position for every cell of its 9x9 grid (81 positions), created when the box is added. Boxes saved before this change may have fewer.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "rows", "columns", "positions"],
@@ -169,7 +169,7 @@
     },
     "position": {
       "title": "SamplePosition",
-      "description": "A single position inside a storage box, for example A1.",
+      "description": "A single position inside a storage box, for example A1. Every cell of the box has one. A position is empty when it has no sampleId.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "label", "row", "column"],

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { SavedLayout } from '../../src/models/SavedLayout.js';
-import type { FreezerShelf } from '../../src/models/freezerLayout.js';
+import type { FreezerShelf, SamplePosition } from '../../src/models/freezerLayout.js';
 import {
   addShelf,
   removeShelf,
@@ -10,8 +10,8 @@ import {
   removeBox,
   createSample,
   removeSampleFromLayout,
-  addSample,
-  removeSample
+  removeSampleFromPosition,
+  assignSampleToPosition
 } from '../../src/services/FreezerService.js';
 
 describe('FreezerService - Shelf Operations', () => {
@@ -177,12 +177,6 @@ describe('FreezerService - Box Operations', () => {
     expect(box?.columns).toBe(9);
   });
 
-  it('should create box with 81 empty positions (9x9)', () => {
-    addBox(layout, 0, 0, 1, 1);
-    const box = layout.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box;
-    expect(box?.positions).toHaveLength(0);
-  });
-
   it('should not add box to occupied slot', () => {
     addBox(layout, 0, 0, 1, 1);
     addBox(layout, 0, 0, 1, 1);
@@ -231,41 +225,77 @@ describe('FreezerService - Sample Operations', () => {
     expect(layout.freezerData.samples).toHaveLength(0);
   });
 
-  it('should add a sample position to a box', () => {
-    const shelf: FreezerShelf = {
-      id: 'shelf-1',
-      name: 'Shelf 1',
-      racks: [
-        {
-          id: 'rack-1',
-          name: 'Rack 1',
-          boxSlots: [
-            {
-              row: 1,
-              column: 1,
-              box: {
-                id: 'box-1',
-                name: 'Box 1-1',
-                rows: 9,
-                columns: 9,
-                positions: []
-              }
-            },
-            ...Array.from({ length: 15 }, (_, i) => ({
-              row: Math.floor((i + 1) / 4) + 1,
-              column: ((i + 1) % 4) + 1,
-              box: null
-            }))
-          ]
-        }
-      ]
-    };
-    layout.freezerData.shelves.push(shelf);
+    // Builds shelf -> rack -> box through the service, so the box gets its 81 positions.
+  function layoutWithBox(): SavedLayout {
+    addShelf(layout);
+    addRack(layout, layout.freezerData.shelves[0]!.id);
+    addBox(layout, 0, 0, 1, 1);
+    return layout;
+  }
+  const getBox = () => layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!;
 
-    addSample(layout, 0, 0, 1, 1, 1, 1);
-    const box = layout.freezerData.shelves[0]?.racks[0]?.boxSlots[0]?.box;
-    expect(box?.positions).toHaveLength(1);
-    expect(box?.positions[0]?.label).toBe('A1');
+  it('should give every new box 81 unique empty positions', () => {
+    layoutWithBox();
+    const positions = getBox().positions;
+    expect(positions).toHaveLength(81);
+    expect(positions.every(position => !position.sampleId)).toBe(true);
+    expect(new Set(positions.map(position => position.id)).size).toBe(81);
+    expect(positions[0]?.label).toBe('A1');
+    expect(positions[80]?.label).toBe('I9');
+  });
+
+  it('should clear the sample but keep the position when a sample is removed from a position', () => {
+    layoutWithBox();
+    const position = getBox().positions[0]!;
+    assignSampleToPosition(layout, position.id, 'Plasma');
+    expect(position.sampleId).toBeDefined();
+
+    removeSampleFromPosition(layout, position.id);
+
+    expect(getBox().positions).toHaveLength(81);
+    expect(position.sampleId).toBeUndefined();
+  });
+
+  it('should delete the sample record when its only position is cleared', () => {
+    layoutWithBox();
+    const position = getBox().positions[0]!;
+    assignSampleToPosition(layout, position.id, 'Plasma');
+    expect(layout.freezerData.samples).toHaveLength(1);
+
+    removeSampleFromPosition(layout, position.id);
+
+    expect(layout.freezerData.samples).toHaveLength(0);
+  });
+
+  it('should keep the sample record when another position still uses it', () => {
+    layoutWithBox();
+    const [first, second] = getBox().positions as [SamplePosition, SamplePosition];
+    assignSampleToPosition(layout, first.id, 'Plasma');
+    second.sampleId = first.sampleId!;
+
+    removeSampleFromPosition(layout, first.id);
+
+    expect(first.sampleId).toBeUndefined();
+    expect(layout.freezerData.samples).toHaveLength(1);
+  });
+
+  it('should do nothing for an unknown or already empty position id', () => {
+    layoutWithBox();
+    removeSampleFromPosition(layout, 'does-not-exist');
+    removeSampleFromPosition(layout, getBox().positions[0]!.id);
+    expect(getBox().positions).toHaveLength(81);
+    expect(layout.freezerData.samples).toHaveLength(0);
+  });
+
+  it('should let a cleared position take a new sample', () => {
+    layoutWithBox();
+    const position = getBox().positions[0]!;
+    assignSampleToPosition(layout, position.id, 'Plasma');
+    removeSampleFromPosition(layout, position.id);
+    assignSampleToPosition(layout, position.id, 'Serum');
+
+    expect(layout.freezerData.samples?.map(sample => sample.name)).toEqual(['Serum']);
+    expect(position.sampleId).toBe(layout.freezerData.samples![0]!.id);
   });
 });
 
@@ -304,14 +334,16 @@ describe('FreezerService - schema-driven limits', () => {
     expect(slots[15]).toEqual({ row: 4, column: 4, box: null });
   });
 
-  it('should create a new box with 9x9 dimensions and no positions', () => {
+  it('should create a new box with 9x9 dimensions and 81 empty positions', () => {
     addRack(layout, layout.freezerData.shelves[0]!.id);
     addBox(layout, 0, 0, 1, 1);
     const box = layout.freezerData.shelves[0]!.racks[0]!.boxSlots[0]!.box!;
     expect(box.rows).toBe(9);
     expect(box.columns).toBe(9);
-    expect(box.positions).toEqual([]);
+    expect(box.positions).toHaveLength(81);
+    expect(box.positions.every(position => !position.sampleId)).toBe(true);
   });
+
 
   it('should alert with the shelf limit when adding a fifth shelf', () => {
     addShelf(layout);

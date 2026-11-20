@@ -10,9 +10,10 @@ import type { FreezerShelf, FreezerRack, FreezerBox, SamplePosition, Sample } fr
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 
-// Builds an id like "shelf-<timestamp>-<random>"; unique enough for local use.
+let idCounter = 0;
+// Builds an id like "shelf-<timestamp>-<counter>"; the counter keeps ids made in the same millisecond unique.
 function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  return `${prefix}-${Date.now()}-${idCounter++}`;
 }
 
 // SHELF operations
@@ -111,6 +112,22 @@ export function addBox(layout: SavedLayout, shelfIndex: number, rackIndex: numbe
   slot.box = newBox;
 }
 
+/** Adds any missing positions to every box so each one has all 81. Existing positions are untouched. */
+export function fillMissingPositions(layout: SavedLayout): void {
+  for (const shelf of layout.freezerData.shelves) {
+    for (const rack of shelf.racks) {
+      for (const slot of rack.boxSlots) {
+        if (!slot.box) continue;
+        const existing = new Set(slot.box.positions.map(p => `${p.row}-${p.column}`));
+        for (const position of createEmptySamplePositions()) {
+          if (!existing.has(`${position.row}-${position.column}`)) slot.box.positions.push(position);
+        }
+        slot.box.positions.sort((a, b) => a.row - b.row || a.column - b.column);
+      }
+    }
+  }
+}
+
 /** Renames the box with id `boxId` (searched across the whole layout); the name is trimmed. No-op if not found. */
 export function renameBox(layout: SavedLayout, boxId: string, boxName: string): void {
   for (const shelf of layout.freezerData.shelves) {
@@ -206,78 +223,25 @@ export function removeSampleFromLayout(layout: SavedLayout, sampleId: string): v
   }
 }
 
-// BOX POSITION SAMPLES operations (assign samples to box positions)
 /**
- * Adds a sample position at (sampleRow, sampleCol) inside the box at slot (row, column).
- * If `sampleName` is given, a new sample is created for it; otherwise it reuses the first
- * sample not yet assigned to any position (or none). The position label is a letter for the
- * row plus the column number (row 1 -> "A", so row 2, column 3 -> "B3").
- * Alerts and does nothing if the box already has the maximum number of positions.
+ * Empties the position with id `positionId`: the position stays in its box, but its sample is
+ * unassigned. The sample record is also deleted from the layout-wide list unless another
+ * position still references it.
  */
-export function addSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleRow: number, sampleCol: number, sampleName?: string): void {
-  const freezer = layout.freezerData;
-  if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;
-  const shelf = freezer.shelves[shelfIndex]!;
-  if (rackIndex < 0 || rackIndex >= shelf.racks.length) return;
-  const rack = shelf.racks[rackIndex]!;
-
-  const slot = rack.boxSlots.find(s => s.row === row && s.column === column);
-  if (!slot || !slot.box) return;
-
-  if (slot.box.positions.length >= FREEZER_LAYOUT_LIMITS.maxPositionsPerBox) {
-    alert(`Maximum samples per box reached (${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})`);
-    return;
-  }
-
-  const specimen = sampleName?.trim()
-    ? createSample(layout, sampleName.trim())
-    : getUnassignedSample(layout);
-  // 64 + 1 = 65 = 'A', so row 1 maps to "A", row 2 to "B", and so on.
-  const positionLabel = String.fromCharCode(64 + sampleRow) + sampleCol;
-  const newPosition: SamplePosition = {
-    id: generateId('pos'),
-    label: positionLabel,
-    row: sampleRow,
-    column: sampleCol,
-    ...(specimen ? { sampleId: specimen.id } : {})
-  };
-
-  slot.box.positions.push(newPosition);
-}
-
-// Returns the first sample in the layout list that no box position references yet, or undefined.
-function getUnassignedSample(layout: SavedLayout): Sample | undefined {
-  const assignedSampleIds = new Set(
-    layout.freezerData.shelves.flatMap(shelf =>
-      shelf.racks.flatMap(rack =>
-        rack.boxSlots.flatMap(slot =>
-          slot.box?.positions.flatMap(position => position.sampleId ? [position.sampleId] : []) ?? []
-        )
-      )
+export function removeSampleFromPosition(layout: SavedLayout, positionId: string): void {
+  const positions = layout.freezerData.shelves.flatMap(shelf =>
+    shelf.racks.flatMap(rack =>
+      rack.boxSlots.flatMap(slot => slot.box?.positions ?? [])
     )
   );
-  return layout.freezerData.samples?.find(sample => !assignedSampleIds.has(sample.id));
-}
+  const position = positions.find(item => item.id === positionId);
+  if (!position?.sampleId) return;
 
-/**
- * Removes a sample position from the box at slot (row, column).
- * NOTE: despite its name, `sampleId` is matched against the POSITION id (position.id),
- * which is what the remove button in App.ts passes. The sample itself stays in the
- * layout-wide list (use removeSampleFromLayout to delete it).
- */
-export function removeSample(layout: SavedLayout, shelfIndex: number, rackIndex: number, row: number, column: number, sampleId: string): void {
-  const freezer = layout.freezerData;
-  if (shelfIndex < 0 || shelfIndex >= freezer.shelves.length) return;
-  const shelf = freezer.shelves[shelfIndex]!;
-  if (rackIndex < 0 || rackIndex >= shelf.racks.length) return;
-  const rack = shelf.racks[rackIndex]!;
+  const sampleId = position.sampleId;
+  delete position.sampleId;
 
-  const slot = rack.boxSlots.find(s => s.row === row && s.column === column);
-  if (!slot || !slot.box) return;
-
-  const idx = slot.box.positions.findIndex(p => p.id === sampleId);
-  if (idx >= 0) {
-    slot.box.positions.splice(idx, 1);
+  if (!positions.some(item => item.sampleId === sampleId)) {
+    removeSampleFromLayout(layout, sampleId);
   }
 }
 
@@ -293,7 +257,19 @@ function createEmptyBoxSlots() {
   return slots;
 }
 
-// New boxes start with no sample positions; positions are added one at a time via addSample().
-function createEmptySamplePositions() {
-  return [];
+// New boxes get every position up front (rows x columns), all empty; samples are assigned into them.
+function createEmptySamplePositions(): SamplePosition[] {
+  const positions: SamplePosition[] = [];
+  for (let row = 1; row <= FREEZER_LAYOUT_LIMITS.boxRows; row++) {
+    for (let col = 1; col <= FREEZER_LAYOUT_LIMITS.boxColumns; col++) {
+      positions.push({
+        id: generateId('pos'),
+        label: String.fromCharCode(64 + row) + col,
+        row,
+        column: col
+      });
+    }
+  }
+  return positions;
 }
+

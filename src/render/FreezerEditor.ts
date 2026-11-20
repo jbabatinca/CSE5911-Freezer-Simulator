@@ -205,7 +205,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       html += `
         <div id="box-${escapeHtml(slot.box!.id)}" tabindex="-1" aria-label="${escapeHtml(slot.box!.name)}" class="box-container color-coded${boxExpanded ? ' box-selected' : ''}${selectedBoxId === slot.box!.id ? ' layout-search-ancestor' : ''}${highlightBox && selectedBoxId === slot.box!.id ? ' layout-search-target' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
-            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
+            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.filter(p => p.sampleId).length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
           </button>
           ${!readOnly ? `<button id="btn-rename-box-${slot.box!.id}" class="btn-rename-box" aria-label="Rename ${escapeHtml(slot.box!.name)}">Rename</button>` : ''}
           ${!readOnly ? renderColorPicker('box', slot.box!.id, slot.box!.name, boxColor, boxInheritsRackColor) : ''}
@@ -265,17 +265,13 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, rea
 
     if (pos) {
       const sampleName = pos.sampleId ? sampleNames.get(pos.sampleId) ?? pos.sampleId : '';
+      const filled = !!pos.sampleId;
       html += `
-        <div id="pos-${escapeHtml(pos.id)}" class="box-position position-filled${selectedPositionId === pos.id ? ' layout-search-target' : ''}" style="position: relative;" tabindex="-1" aria-label="${escapeHtml(sampleName ? `${sampleName}, position ${label}` : `Position ${label}`)}" title="${escapeHtml(sampleName ? `${sampleName} — ${label}` : label)}">
-          ${label}
-          ${!readOnly && pos.sampleId ? `<button id="btn-rename-sample-${pos.sampleId}" class="btn-rename-sample" aria-label="Rename ${escapeHtml(sampleName)}" title="Rename specimen">✎</button>` : ''}
-          ${!readOnly ? `<button id="btn-remove-sample-${pos.id}" class="btn-remove-sample" title="Remove sample" style="position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; padding: 0; font-size: 12px; min-width: auto;">✕</button>` : ''}
-        </div>
-      `;
-    } else if (!readOnly) {
-      html += `
-        <div class="box-position">
-          <button id="btn-add-sample-${boxRow}-${boxCol}-${row}-${col}" class="btn-add" aria-label="Add sample at ${label}">+</button>
+        <div id="pos-${escapeHtml(pos.id)}" class="box-position${filled ? ' position-filled' : ''}${selectedPositionId === pos.id ? ' layout-search-target' : ''}" style="position: relative;" tabindex="-1" aria-label="${escapeHtml(sampleName ? `${sampleName}, position ${label}` : `Position ${label}`)}" title="${escapeHtml(sampleName ? `${sampleName} — ${label}` : label)}">
+          ${filled ? label : ''}
+          ${!readOnly && filled ? `<button id="btn-rename-sample-${pos.sampleId}" class="btn-rename-sample" aria-label="Rename ${escapeHtml(sampleName)}" title="Rename sample">✎</button>` : ''}
+          ${!readOnly && filled ? `<button id="btn-remove-sample-${pos.id}" class="btn-remove-sample" title="Remove sample" style="position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; padding: 0; font-size: 12px; min-width: auto;">✕</button>` : ''}
+          ${!readOnly && !filled ? `<button id="btn-assign-sample-${escapeHtml(pos.id)}" class="btn-add" aria-label="Add sample at ${label}">+</button>` : ''}
         </div>
       `;
     } else {

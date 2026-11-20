@@ -38,9 +38,14 @@ Each box requires a non-empty `id` and `name`, `rows: 9`, `columns: 9`, and a
 `positions` array with at most 81 entries. Box `color` is optional and follows
 the same hex-color rule as rack color.
 
+A new box is created with all 81 positions (A1 to I9), each empty. Boxes saved
+before this change may have fewer; the missing positions are added when a
+layout is loaded, so the schema still accepts them.
+
 Every position requires a non-empty `id` and `label`, and integer `row` and
 `column` values from 1 through 9. `sampleId` is optional and must be a
-non-empty string when present.
+non-empty string when present. A position with no `sampleId` is empty. Removing
+a sample clears its `sampleId` and keeps the position.
 
 ## Samples
 

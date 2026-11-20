@@ -392,3 +392,69 @@ describe('Export to PDF', () => {
   });
 });
 
+describe('Position grid', () => {
+  let layout: SavedLayout;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    layout = {
+      id: 'layout-1',
+      name: 'Test Layout',
+      freezerData: {
+        schemaVersion: '1.0',
+        id: 'freezer-1',
+        name: 'Test Freezer',
+        shelves: [{
+          id: 'shelf-1',
+          name: 'Shelf 1',
+          racks: [{
+            id: 'rack-1',
+            name: 'Rack 1',
+            boxSlots: Array.from({ length: 16 }, (_, i) => ({
+              row: Math.floor(i / 4) + 1,
+              column: (i % 4) + 1,
+              box: i === 0
+                ? {
+                    id: 'box-1', name: 'Box 1', rows: 9, columns: 9,
+                    positions: [
+                      { id: 'pos-1', label: 'A1', row: 1, column: 1, sampleId: 's1' },
+                      { id: 'pos-2', label: 'A2', row: 1, column: 2 }
+                    ]
+                  }
+                : null
+            }))
+          }]
+        }],
+        samples: [{ id: 's1', name: 'Plasma' }]
+      } as any,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    (editorState.getExpandedShelfId as any).mockReturnValue('shelf-1');
+    (editorState.getExpandedRackId as any).mockReturnValue('rack-1');
+    (editorState.getExpandedBoxId as any).mockReturnValue('box-1');
+  });
+
+  it('shows rename and remove buttons only on a filled position', () => {
+    const html = FreezerEditor(layout, false);
+    expect(html).toContain('btn-remove-sample-pos-1');
+    expect(html).toContain('btn-rename-sample-s1');
+    expect(html).not.toContain('btn-remove-sample-pos-2');
+  });
+
+  it('shows the add button only on an empty position', () => {
+    const html = FreezerEditor(layout, false);
+    expect(html).toContain('btn-assign-sample-pos-2');
+    expect(html).not.toContain('btn-assign-sample-pos-1');
+  });
+
+  it('shows no sample buttons in read-only mode', () => {
+    const html = FreezerEditor(layout, true);
+    expect(html).not.toContain('btn-remove-sample-');
+    expect(html).not.toContain('btn-assign-sample-');
+  });
+
+  it('counts only filled positions in the box counter', () => {
+    expect(FreezerEditor(layout, false)).toContain('Box 1 (1/81)');
+  });
+});
