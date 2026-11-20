@@ -1,22 +1,27 @@
 /**
- * editorState.ts - stores the currently expanded shelf, rack, and box in the editor.
- * Only one id per level is retained; changing a parent clears its descendants.
+ * editorState.ts - stores the expanded shelves and the open rack and box in the editor.
  */
-let expandedShelfId: string | null = null;
+const expandedShelfIds = new Set<string>();
 let expandedRackId: string | null = null;
 let expandedBoxId: string | null = null;
 
-/** Takes no arguments; returns the expanded shelf id, or null if none is expanded. */
-export function getExpandedShelfId(): string | null {
-  return expandedShelfId;
+export function getExpandedShelfIds(): ReadonlySet<string> {
+  return expandedShelfIds;
 }
 
-/** Takes a shelf id or null, sets it as expanded, and resets the rack and box; returns nothing. */
+/** Opens a single shelf to reveal a search result, or clears expansion when passed null. */
 export function setExpandedShelfId(shelfId: string | null): void {
-  expandedShelfId = shelfId;
-  // When changing shelves, reset rack and box
-  expandedRackId = null;
-  expandedBoxId = null;
+  expandedShelfIds.clear();
+  if (shelfId !== null) expandedShelfIds.add(shelfId);
+  setExpandedRackId(null);
+}
+
+export function expandShelves(shelfIds: readonly string[]): void {
+  for (const shelfId of shelfIds) expandedShelfIds.add(shelfId);
+}
+
+export function collapseShelf(shelfId: string): void {
+  expandedShelfIds.delete(shelfId);
 }
 
 /** Takes no arguments; returns the expanded rack id, or null if none is expanded. */

@@ -36,6 +36,7 @@ import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationS
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
 import { deleteLayout, generateLayoutId, getAllLayouts, getLayout, saveLayout } from '../services/StorageService.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
+import type { FreezerShelf } from '../models/freezerLayout.js';
 import type { QuestionTargetType } from '../models/QuestionSet.js';
 import { 
   addShelf, removeShelf, 
@@ -44,7 +45,7 @@ import {
     assignSampleToPosition, renameBox, renameSample, removeSampleFromPosition
 } from '../services/FreezerService.js';
 import {
-  getExpandedShelfId, setExpandedShelfId,
+  getExpandedShelfIds, setExpandedShelfId, expandShelves, collapseShelf,
   getExpandedRackId, setExpandedRackId,
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
@@ -55,6 +56,18 @@ import { clearAttempts } from '../services/AttemptHistoryService.js';
 import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 import { searchLayouts } from '../services/LayoutSearchService.js';
 import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
+
+function getRackIndexes(button: Element): { shelfIndex: number; rackIndex: number } {
+    return {
+        shelfIndex: Number(button.closest('[data-shelf-index]')?.getAttribute('data-shelf-index') ?? -1),
+        rackIndex: Number(button.closest('[data-rack-index]')?.getAttribute('data-rack-index') ?? -1),
+    };
+}
+
+function closeShelf(shelf: FreezerShelf): void {
+    collapseShelf(shelf.id);
+    if (shelf.racks.some(rack => rack.id === getExpandedRackId())) setExpandedRackId(null);
+}
 
 /**
  * Opens a small modal <dialog> asking the user to type a name (used for renaming and naming new items).
@@ -915,6 +928,14 @@ export function App(): void {
         });
 
         // ===== SHELF BUTTONS =====
+        document.getElementById('btn-expand-all-shelves')?.addEventListener('click', () => {
+            const currentLayout = getCurrentEditingLayout();
+            if (!currentLayout) return;
+            expandShelves(currentLayout.freezerData.shelves.map(shelf => shelf.id));
+            render();
+            document.getElementById('btn-expand-all-shelves')?.focus();
+        });
+
         const btnAddShelf = document.getElementById('btn-add-shelf');
         if (btnAddShelf) {
             btnAddShelf.addEventListener('click', () => {
@@ -925,14 +946,19 @@ export function App(): void {
             });
         }
 
-        // Toggle Shelf
-        // Only one shelf is expanded at a time (expanded ids live in state/editorState.ts); clicking the open one collapses it.
+        // Toggle only the selected shelf.
         document.querySelectorAll('[id^="btn-toggle-shelf-"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const shelfId = btn.id.replace('btn-toggle-shelf-', '');
-                const isExpanded = getExpandedShelfId() === shelfId;
-                setExpandedShelfId(isExpanded ? null : shelfId);
+                const shelf = getCurrentEditingLayout()?.freezerData.shelves.find(item => item.id === shelfId);
+                if (!shelf) return;
+                if (getExpandedShelfIds().has(shelfId)) {
+                    closeShelf(shelf);
+                } else {
+                    expandShelves([shelfId]);
+                }
                 render();
+                document.getElementById(btn.id)?.focus();
             });
         });
 
@@ -942,24 +968,25 @@ export function App(): void {
             btn.addEventListener('click', () => {
                 const index = parseInt(btn.id.replace('btn-remove-shelf-', ''));
                 const currentLayout = getCurrentEditingLayout();
-                if (!currentLayout || !confirm('Remove shelf?')) return;
+                if (!currentLayout) return;
+                const shelf = currentLayout.freezerData.shelves[index];
+                if (!shelf || !confirm('Remove shelf?')) return;
+                closeShelf(shelf);
                 removeShelf(currentLayout, index);
                 render();
             });
         });
 
         // ===== RACK BUTTONS =====
-        // Racks are added to whichever shelf is currently expanded.
-        const btnAddRack = document.getElementById('btn-add-rack');
-        if (btnAddRack) {
-            btnAddRack.addEventListener('click', () => {
+        document.querySelectorAll('[id^="btn-add-rack-"]').forEach(btn => {
+            btn.addEventListener('click', () => {
                 const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                if (!currentLayout || !expandedShelfId) return;
-                addRack(currentLayout, expandedShelfId);
+                if (!currentLayout) return;
+                const shelfId = btn.id.slice('btn-add-rack-'.length);
+                addRack(currentLayout, shelfId);
                 render();
             });
-        }
+        });
 
         // Toggle Rack
         document.querySelectorAll('[id^="btn-toggle-rack-"]').forEach(btn => {
@@ -1016,46 +1043,34 @@ export function App(): void {
             });
         });
 
-        // Remove Rack
-        // The id suffix is the rack's index within the expanded shelf.
+        // Remove Rack from the shelf containing the clicked button.
         document.querySelectorAll('[id^="btn-remove-rack-"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const index = parseInt(btn.id.replace('btn-remove-rack-', ''));
                 const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                if (!currentLayout || !expandedShelfId || !confirm('Remove rack?')) return;
-                
-                // Find shelf index
-                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
-                if (shelfIndex >= 0) {
-                    removeRack(currentLayout, shelfIndex, index);
-                }
+                if (!currentLayout) return;
+                const { shelfIndex, rackIndex } = getRackIndexes(btn);
+                const rack = currentLayout.freezerData.shelves[shelfIndex]?.racks[rackIndex];
+                if (!rack || !confirm('Remove rack?')) return;
+                if (rack.id === getExpandedRackId()) setExpandedRackId(null);
+                removeRack(currentLayout, shelfIndex, rackIndex);
                 render();
             });
         });
 
         // ===== BOX BUTTONS =====
         // Add Box
-        // Button id is "btn-add-box-<row>-<column>" (the empty slot's grid position). FreezerService works with
-        // array indexes, so the expanded shelf/rack ids are converted to indexes first.
+        // Button id is "btn-add-box-<row>-<column>" (the empty slot's grid position).
         document.querySelectorAll('[id^="btn-add-box-"]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const coords = btn.id.replace('btn-add-box-', '').split('-');
                 const row = parseInt(coords[0]!);
                 const column = parseInt(coords[1]!);
                 const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                const expandedRackId = getExpandedRackId();
-                if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const { shelfIndex, rackIndex } = getRackIndexes(btn);
+                if (!currentLayout || shelfIndex < 0 || rackIndex < 0) return;
                 const boxName = await requestName('Add box', 'Box name', 'Create box', `Box ${row}-${column}`);
                 if (!boxName) return;
-                
-                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
-                const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
-                
-                if (shelfIndex >= 0 && rackIndex >= 0) {
-                    addBox(currentLayout, shelfIndex, rackIndex, row, column, boxName);
-                }
+                addBox(currentLayout, shelfIndex, rackIndex, row, column, boxName);
                 render();
             });
         });
@@ -1099,19 +1114,11 @@ export function App(): void {
                 const row = parseInt(coords[0]!);
                 const column = parseInt(coords[1]!);
                 const currentLayout = getCurrentEditingLayout();
-                const expandedShelfId = getExpandedShelfId();
-                const expandedRackId = getExpandedRackId();
-
-                if (!currentLayout || !expandedShelfId || !expandedRackId) return;
+                const { shelfIndex, rackIndex } = getRackIndexes(btn);
+                if (!currentLayout || shelfIndex < 0 || rackIndex < 0) return;
                 if (!confirm('Remove this box and all its samples?')) return;
-
-                const shelfIndex = currentLayout.freezerData.shelves.findIndex(s => s.id === expandedShelfId);
-                const rackIndex = currentLayout.freezerData.shelves[shelfIndex]?.racks.findIndex(r => r.id === expandedRackId) ?? -1;
-
-                if (shelfIndex >= 0 && rackIndex >= 0) {
-                    removeBox(currentLayout, shelfIndex, rackIndex, row, column);
-                    render();
-                }
+                removeBox(currentLayout, shelfIndex, rackIndex, row, column);
+                render();
             });
         });
 

@@ -109,7 +109,7 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
   await expect(page.getByRole('button', { name: 'Switch to Dark Mode' })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('navigation and history buttons match the configuration button in both themes', async ({ page }) => {
+test('navigation, history, and freezer controls match the configuration button in both themes', async ({ page }) => {
   await page.addInitScript(layout => {
     localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
   }, makeLayout());
@@ -148,11 +148,31 @@ test('navigation and history buttons match the configuration button in both them
     await expectScarletButton('#btn-back');
   }
   await page.locator('#layout-layout-1').click();
+  const search = page.locator('.editor-header #btn-toggle-layout-search');
+  const shelf = page.getByRole('region', { name: 'Top shelf' });
+  const shelfToggle = page.locator('.btn-toggle-shelf');
   for (const theme of ['Dark', 'Light']) {
     if (await page.locator('html').getAttribute('data-theme') !== theme.toLowerCase()) {
       await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
     }
-    await expectScarletButton('.btn-back');
+    for (const selector of ['.btn-back', '#btn-expand-all-shelves', '#btn-toggle-layout-search', '#btn-download', '#btn-export-pdf']) {
+      await expectScarletButton(selector);
+    }
+    await expect(shelf).toHaveCSS('border-bottom-color', 'rgb(186, 12, 47)');
+    await expect(shelf).toHaveCSS('border-bottom-width', '5px');
+    await expect(shelf).toHaveCSS('border-radius', '8px');
+    await expect(shelfToggle).toHaveText('▶');
+    await expectScarletButton('.btn-toggle-shelf');
+    await shelfToggle.press('Enter');
+    await expect(shelfToggle).toHaveText('▼');
+    await expectScarletButton('.btn-toggle-shelf');
+    await shelfToggle.press('Enter');
+
+    await search.press('Enter');
+    await expect(search).toHaveAttribute('aria-expanded', 'true');
+    await expectScarletButton('#btn-toggle-layout-search');
+    await expect(search.locator('svg')).toHaveCSS('stroke', 'rgb(255, 255, 255)');
+    await page.getByRole('button', { name: 'Close search' }).click();
   }
 });
 

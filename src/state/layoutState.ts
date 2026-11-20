@@ -2,6 +2,7 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { generateLayoutId } from '../services/StorageService.js';
 import { FREEZER_LAYOUT_SCHEMA_VERSION } from '../models/freezerLayout.js';
+import { setExpandedShelfId } from './editorState.js';
 
 // Keep the object by reference for in-place editor updates; setting it does not persist it.
 let currentEditingLayout: SavedLayout | null = null;
@@ -13,6 +14,7 @@ export function getCurrentEditingLayout(): SavedLayout | null {
 
 /** Sets the active layout reference from the supplied layout, or clears it with null; returns nothing. */
 export function setCurrentEditingLayout(layout: SavedLayout | null): void {
+    if (currentEditingLayout !== layout) setExpandedShelfId(null);
     currentEditingLayout = layout;
 }
 

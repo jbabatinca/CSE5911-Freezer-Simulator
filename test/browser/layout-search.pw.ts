@@ -67,6 +67,14 @@ for (const role of ['user', 'admin'] as const) {
     });
 
     test('dashboard search opens layouts, shelves, racks, boxes, and positions across freezers', async ({ page }) => {
+      const toggle = page.getByRole('button', { name: 'Search', exact: true });
+      await expect(toggle).toHaveCSS('background-color', 'rgb(186, 12, 47)');
+      await expect(toggle).toHaveCSS('color', 'rgb(255, 255, 255)');
+      await expect(toggle.locator('svg')).toHaveCSS('stroke', 'rgb(255, 255, 255)');
+      await toggle.hover();
+      await expect(toggle).toHaveCSS('background-color', 'rgb(112, 7, 28)');
+      await expect(toggle.locator('svg')).toHaveCSS('stroke', 'rgb(255, 255, 255)');
+
       const input = page.getByRole('searchbox', { name: 'Name or position' });
       await expect(page.locator('#layout-search-help')).toContainText('all saved layouts');
       const cases = [
@@ -77,7 +85,7 @@ for (const role of ['user', 'admin'] as const) {
         { query: 'a2', name: 'Position: Position A2', target: '#pos-layout-1-empty-1' },
       ];
       for (const item of cases) {
-        await page.getByRole('button', { name: 'Search', exact: true }).click();
+        await toggle.click();
         await input.fill(item.query);
         await input.press('Enter');
         await page.getByRole('button', { name: item.name, exact: false }).first().click();
@@ -133,6 +141,8 @@ for (const role of ['user', 'admin'] as const) {
       const input = page.getByRole('searchbox', { name: 'Name or position' });
       const panel = page.locator('#layout-search-panel');
       await page.getByRole('button', { name: 'Export to PDF', exact: true }).focus();
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('button', { name: 'Expand All Shelves' })).toBeFocused();
       await page.keyboard.press('Tab');
       await expect(page.locator('#btn-toggle-shelf-layout-1-shelf')).toBeFocused();
       await toggle.focus();
