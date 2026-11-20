@@ -45,3 +45,16 @@ export function getExpandedBoxId(): string | null {
 export function setExpandedBoxId(boxId: string | null): void {
   expandedBoxId = boxId;
 }
+
+export type Clipboard = { kind: 'shelf' | 'rack' | 'box'; mode: 'cut' | 'copy'; id: string; layoutId: string } | null;
+let clipboard: Clipboard = null;
+
+/** Returns what was last cut/copied, or null. */
+export function getClipboard(): Clipboard {
+  return clipboard;
+}
+
+/** Stores the cut/copied item (by id, looked up again at paste time); pass null to clear. */
+export function setClipboard(value: Clipboard): void {
+  clipboard = value;
+}

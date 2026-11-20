@@ -81,3 +81,32 @@ test('edits racks and boxes on the selected shelf with all shelves open', async 
   await expect(addBox).toBeVisible();
   await expect(top.locator('#rack-layout-1-rack-1')).toBeVisible();
 });
+
+test('pastes and drags items on their respective shelves with all shelves open', async ({ page }) => {
+  await openFreezer(page, 'admin');
+  await page.getByRole('button', { name: 'Expand All Shelves' }).click();
+  const top = page.getByRole('region', { name: 'Top shelf' });
+  const bottom = page.getByRole('region', { name: 'Bottom shelf' });
+  const bottomRacks = bottom.locator('.rack-info h4');
+  await top.getByRole('heading', { name: 'Rack 1' }).click();
+  await page.keyboard.press('Control+c');
+
+  await page.locator('#freezer-title').hover();
+  await page.keyboard.press('Control+v');
+  await expect(page.locator('#editor-message')).toContainText('Hover over the shelf');
+  await expect(bottomRacks).toHaveText(['Rack 2']);
+
+  await bottom.getByRole('heading', { name: 'Bottom shelf' }).hover();
+  await page.keyboard.press('Control+v');
+  await expect(bottomRacks).toHaveText(['Rack 2', 'Rack 1']);
+  await bottomRacks.first().dragTo(bottomRacks.last());
+  await expect(bottomRacks).toHaveText(['Rack 1', 'Rack 2']);
+  await expect(top.locator('.rack-info h4')).toHaveText(['Rack 1']);
+
+  await bottom.locator('#btn-toggle-rack-layout-1-rack-2').click();
+  const box = bottom.locator('#box-layout-1-box-2');
+  const emptySlot = bottom.locator('.box-slot.empty[data-row="1"][data-column="2"]');
+  await emptySlot.scrollIntoViewIfNeeded();
+  await box.dragTo(emptySlot);
+  await expect(box).toHaveAttribute('data-column', '2');
+});
