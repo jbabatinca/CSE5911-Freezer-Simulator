@@ -223,6 +223,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-width: 0;
   padding: 32px;
   border: 1px solid var(--border);
+  border-top: 5px solid var(--scarlet);
   border-radius: 6px;
   background: var(--surface);
   box-shadow: 0 8px 28px rgb(33 51 75 / 5%);
@@ -402,7 +403,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   align-items: center;
   justify-content: center;
   padding: 32px;
-  border-top: 5px solid var(--action);
   text-align: center;
   background: linear-gradient(135deg, var(--surface), var(--surface-raised));
 }
@@ -437,7 +437,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
-    .btn-save, #btn-create-new) {
+    .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
+    #btn-user-history, #btn-back, .btn-back) {
   border-color: var(--action);
   color: #fff;
   background: var(--action);
@@ -445,7 +446,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
-    .btn-save, #btn-create-new):hover {
+    .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
+    #btn-user-history, #btn-back, .btn-back):hover {
   border-color: var(--action-hover);
   background: var(--action-hover);
 }

@@ -41,16 +41,27 @@ test('all screen panels share the page width and expanded freezer content scroll
     expect(panel!.width).toBe(viewport.width - margin * 2);
     expect(panel!.y + panel!.height).toBeGreaterThanOrEqual(viewport.height - (viewport.width <= 600 ? 12 : 32));
   };
+  const expectScarletTopBorder = async (selector: string) => {
+    const panel = page.locator(selector);
+    await expect(panel).toHaveCSS('border-top-width', '5px');
+    await expect(panel).toHaveCSS('border-top-color', 'rgb(186, 12, 47)');
+    await expect(panel).toHaveCSS('border-top-left-radius', '6px');
+    await expect(panel).toHaveCSS('border-top-right-radius', '6px');
+  };
 
   await expectPanelWidth('.home-view');
+  await expectScarletTopBorder('.home-view');
   await page.locator('#btn-admin-mode').click();
   await page.locator('#admin-password-input').fill('123456');
   await page.locator('#btn-admin-login').click();
   await expectPanelWidth('.mode-home-view');
+  await expectScarletTopBorder('.mode-home-view');
   await page.locator('#btn-admin-configuration').click();
   await expectPanelWidth('.layout-dashboard');
+  await expectScarletTopBorder('.layout-dashboard');
   await page.locator('#layout-layout-1').click();
   await expectPanelWidth('.freezer-editor');
+  await expectScarletTopBorder('.freezer-editor');
   await expect(page.locator('.editor-header')).toHaveCSS('flex-wrap', 'wrap');
 
   await page.setViewportSize({ width: viewport.width, height: 450 });
@@ -66,8 +77,11 @@ test('all screen panels share the page width and expanded freezer content scroll
   await page.locator('#btn-home').click();
   await page.locator('#btn-user-mode').click();
   await expectPanelWidth('.mode-home-view');
+  await expectScarletTopBorder('.mode-home-view');
   await page.locator('#btn-freezer-layouts').click();
   await expectPanelWidth('.layout-dashboard');
+  await expectScarletTopBorder('.layout-dashboard');
   await page.locator('#layout-layout-1').click();
   await expectPanelWidth('.freezer-editor');
+  await expectScarletTopBorder('.freezer-editor');
 });

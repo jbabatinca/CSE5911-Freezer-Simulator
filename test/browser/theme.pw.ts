@@ -71,8 +71,16 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
   await page.addInitScript(layout => {
     localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
   }, makeLayout());
+  const expectScarletTopBorder = async (selector: string) => {
+    const panel = page.locator(selector);
+    await expect(panel).toHaveCSS('border-top-width', '5px');
+    await expect(panel).toHaveCSS('border-top-color', 'rgb(186, 12, 47)');
+    await expect(panel).toHaveCSS('border-top-left-radius', '6px');
+    await expect(panel).toHaveCSS('border-top-right-radius', '6px');
+  };
   await page.goto('/');
   await page.getByRole('button', { name: 'Switch to Dark Mode' }).click();
+  await expectScarletTopBorder('.home-view');
   await page.locator('#btn-admin-mode').click();
   await expect(page.locator('.modal-content')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
   await expect(page.locator('.admin-password-brand-dark')).toBeVisible();
@@ -83,14 +91,67 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
   await page.locator('#btn-cancel-admin').click();
   await page.locator('#btn-user-mode').click();
   await expect(page.locator('.mode-home-view')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
+  await expectScarletTopBorder('.mode-home-view');
   await expect(page.locator('.user-question-set-launcher')).toHaveCSS('background-color', 'rgb(46, 49, 51)');
+  await page.locator('#btn-user-training').click();
+  await expectScarletTopBorder('.training-view');
+  await page.locator('#btn-back').click();
   await page.locator('#btn-freezer-layouts').click();
   await expect(page.locator('.layout-dashboard')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
+  await expectScarletTopBorder('.layout-dashboard');
   await page.locator('#layout-layout-1').click();
   await expect(page.locator('.freezer-editor')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
+  await expectScarletTopBorder('.freezer-editor');
   await page.locator('#btn-toggle-shelf-layout-1-shelf').click();
   await page.locator('#btn-toggle-rack-layout-1-rack-1').click();
   await expect(page.locator('.freezer-editor .box-slot.empty')).toHaveCSS('background-color', 'rgb(33, 35, 37)');
   await expect(page.locator('#btn-toggle-box-layout-1-box-1')).toHaveCSS('color', 'rgb(246, 247, 248)');
   await expect(page.getByRole('button', { name: 'Switch to Dark Mode' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('navigation and history buttons match the configuration button in both themes', async ({ page }) => {
+  await page.addInitScript(layout => {
+    localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
+  }, makeLayout());
+  await page.goto('/');
+  await page.locator('#btn-admin-mode').click();
+  await page.locator('#admin-password-input').fill('123456');
+  await page.locator('#btn-admin-login').click();
+
+  const expectScarletButton = async (selector: string) => {
+    const button = page.locator(selector);
+    await expect(button).toHaveCSS('border-color', 'rgb(186, 12, 47)');
+    await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(button).toHaveCSS('background-color', 'rgb(186, 12, 47)');
+    await button.hover();
+    await expect(button).toHaveCSS('border-color', 'rgb(112, 7, 28)');
+    await expect(button).toHaveCSS('background-color', 'rgb(112, 7, 28)');
+    await page.locator('.app-header h1').hover();
+    await expect(button).toHaveCSS('background-color', 'rgb(186, 12, 47)');
+  };
+  const adminHomeButtons = ['#btn-admin-configuration', '#btn-home', '#btn-admin-settings', '#btn-logout', '#btn-user-history'];
+
+  for (const theme of ['Light', 'Dark']) {
+    if (await page.locator('html').getAttribute('data-theme') !== theme.toLowerCase()) {
+      await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
+    }
+    for (const selector of adminHomeButtons) {
+      await expectScarletButton(selector);
+    }
+  }
+
+  await page.locator('#btn-admin-configuration').click();
+  for (const theme of ['Dark', 'Light']) {
+    if (await page.locator('html').getAttribute('data-theme') !== theme.toLowerCase()) {
+      await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
+    }
+    await expectScarletButton('#btn-back');
+  }
+  await page.locator('#layout-layout-1').click();
+  for (const theme of ['Dark', 'Light']) {
+    if (await page.locator('html').getAttribute('data-theme') !== theme.toLowerCase()) {
+      await page.getByRole('button', { name: `Switch to ${theme} Mode` }).click();
+    }
+    await expectScarletButton('.btn-back');
+  }
 });
