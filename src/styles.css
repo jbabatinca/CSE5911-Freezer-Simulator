@@ -482,8 +482,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   overflow-wrap: anywhere;
 }
 
-.layout-slot {
-  border-top: 4px solid var(--primary);
+button.layout-slot {
+  border-top: 4px solid var(--scarlet);
   background: var(--surface-raised);
 }
 
@@ -1740,6 +1740,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-color: var(--border);
   border-left: 6px solid var(--item-color);
   background: color-mix(in srgb, var(--item-color) 8%, var(--surface));
+}
+
+#freezer-shelves .rack.color-coded {
+  border-left-color: var(--scarlet);
 }
 
 .layout-color-trigger {

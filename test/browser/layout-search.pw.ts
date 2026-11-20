@@ -67,6 +67,16 @@ for (const role of ['user', 'admin'] as const) {
     });
 
     test('dashboard search opens layouts, shelves, racks, boxes, and positions across freezers', async ({ page }) => {
+      const layoutCards = page.locator('.layout-grid .layout-slot');
+      await expect(layoutCards).toHaveCount(2);
+      for (const card of await layoutCards.all()) {
+        await expect(card).toHaveCSS('border-top-color', 'rgb(186, 12, 47)');
+        await expect(card).toHaveCSS('border-top-width', '4px');
+        await expect(card).toHaveCSS('border-radius', '12px');
+      }
+      await layoutCards.first().hover();
+      await expect(layoutCards.first()).toHaveCSS('border-top-color', 'rgb(186, 12, 47)');
+
       const toggle = page.getByRole('button', { name: 'Search', exact: true });
       await expect(toggle).toHaveCSS('background-color', 'rgb(186, 12, 47)');
       await expect(toggle).toHaveCSS('color', 'rgb(255, 255, 255)');

@@ -110,9 +110,11 @@ test('dark theme covers dialogs, user home, layout dashboard, and freezer cards'
 });
 
 test('navigation, history, and freezer controls match the configuration button in both themes', async ({ page }) => {
+  const layout = makeLayout();
+  layout.freezerData.shelves[0]!.racks[1]!.color = '#2878C7';
   await page.addInitScript(layout => {
     localStorage.setItem('freezer-layouts', JSON.stringify([layout]));
-  }, makeLayout());
+  }, layout);
   await page.goto('/');
   await page.locator('#btn-admin-mode').click();
   await page.locator('#admin-password-input').fill('123456');
@@ -166,6 +168,12 @@ test('navigation, history, and freezer controls match the configuration button i
     await shelfToggle.press('Enter');
     await expect(shelfToggle).toHaveText('▼');
     await expectScarletButton('.btn-toggle-shelf');
+    for (const rackName of ['Rack 1', 'Rack 2']) {
+      const rack = shelf.getByRole('listitem', { name: rackName });
+      await expect(rack).toHaveCSS('border-left-color', 'rgb(186, 12, 47)');
+      await expect(rack).toHaveCSS('border-left-width', '6px');
+      await expect(rack).toHaveCSS('border-radius', '8px');
+    }
     await shelfToggle.press('Enter');
 
     await search.press('Enter');
