@@ -2334,7 +2334,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     print-color-adjust: exact;
   }
 
-    #print-root .racks {
+  #print-root .freezer-editor {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  #print-root .racks {
     flex-wrap: nowrap;
     overflow: visible;
   }
@@ -2347,9 +2354,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   #print-root .shelf {
     break-inside: avoid;
   }
-    #print-root h2 {
+
+  #print-root h2 {
     margin: 0 0 8px;
-    font-size: 18px;
+    font-size: 24px;
+    text-align: center;
   }
 
   #print-root .freezer {
@@ -2364,7 +2373,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   #print-root .shelf h3 {
     margin: 0 0 6px;
-    font-size: 14px;
+    font-size: 22px;
   }
 
   #print-root .rack {
@@ -2374,7 +2383,73 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   #print-root .rack h4 {
     margin: 0;
-    font-size: 13px;
+    font-size: 22px;
+  }
+
+  /* One shelf per page: the shelf looks as it does in the layout, stretched to fill the page. */
+  #print-root .export-page {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    height: 48vh;                    /* fits Letter and A4 landscape with 0.4in margins */
+    break-after: page;
+    break-inside: avoid;
+  }
+
+  #print-root .export-page:last-child {
+    break-after: auto;              /* no blank trailing page */
+  }
+
+  #print-root .export-page-header {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  #print-root .export-page-header h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  /* The freezer and the shelf card grow to fill the page. */
+  #print-root .export-page .freezer,
+  #print-root .export-page .shelf {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  #print-root .export-page .shelf-header {
+    flex: 0 0 auto;
+  }
+
+  #print-root .export-page .shelf h3 {
+    margin: 0 0 12px;
+    font-size: 22px;
+  }
+
+  /* All racks in one row, equal width, as tall as the shelf. */
+  #print-root .export-page .racks {
+    flex: 1;
+    align-items: stretch;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  #print-root .export-page .rack {
+    container-type: inline-size;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  #print-root .export-page .rack h4 {
+    margin: 0;
+    font-size: 26px;       /* last resort for a word that still doesn't fit */
   }
 }
 
