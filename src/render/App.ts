@@ -49,11 +49,12 @@ import {
   getExpandedBoxId, setExpandedBoxId
 } from '../state/editorState.js';
 import { validateFreezerLayout } from '../services/LayoutValidator.js';
-import { FreezerEditor } from './FreezerEditor.js';
+import { FreezerEditor, type ExportLayout } from './FreezerEditor.js';
 import { ProgressHistoryView } from './ProgressHistoryView.js';
 import { clearAttempts } from '../services/AttemptHistoryService.js';
 import { initializeAuth, isAdminAuthenticated, authenticateAdmin, logout, switchToUserMode, changeAdminPassword } from '../state/authState.js';
 import { searchLayouts } from '../services/LayoutSearchService.js';
+import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
 
 /**
  * Opens a small modal <dialog> asking the user to type a name (used for renaming and naming new items).
@@ -97,6 +98,38 @@ function requestName(title: string, label: string, submitLabel: string, initialV
         dialog.showModal();
         input.focus();
         if (initialValue) input.select();
+    });
+}
+
+/** Opens a modal asking which PDF layout to use; resolves to the choice, or null if cancelled. */
+function requestExportLayout(initial: ExportLayout): Promise<ExportLayout | null> {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'name-entry-dialog';
+        dialog.innerHTML = `
+            <form class="name-entry-form">
+                <h2>Export to PDF</h2>
+                <label><input type="radio" name="export-layout" value="current"${initial === 'current' ? ' checked' : ''}> Current layout</label>
+                <label><input type="radio" name="export-layout" value="shelf-pages"${initial === 'shelf-pages' ? ' checked' : ''}> One shelf per page</label>
+                <div class="name-entry-actions">
+                    <button type="button" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-save">Export</button>
+                </div>
+            </form>
+        `;
+        const form = dialog.querySelector('form')!;
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            dialog.close(new FormData(form).get('export-layout') === 'shelf-pages' ? 'shelf-pages' : 'current');
+        });
+        dialog.querySelector('.btn-cancel')!.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => {
+            const value = dialog.returnValue;
+            dialog.remove();
+            resolve(value === 'current' || value === 'shelf-pages' ? value : null);
+        }, { once: true });
+        document.body.append(dialog);
+        dialog.showModal();
     });
 }
 
@@ -817,18 +850,23 @@ export function App(): void {
         // div and opens the browser print dialog (user chooses "Save as PDF"). The div is removed after printing.
         const btnExportPdf = document.getElementById('btn-export-pdf');
         if (btnExportPdf) {
-            btnExportPdf.addEventListener('click', () => {
+                btnExportPdf.addEventListener('click', async () => {
                 const currentLayout = getCurrentEditingLayout();
                 if (!currentLayout) return;
 
+                const exportLayout = await requestExportLayout(getExportLayoutPreference());
+                if (!exportLayout) return; // cancelled
+                setExportLayoutPreference(exportLayout);
+
                 const printRoot = document.createElement('div');
                 printRoot.id = 'print-root';
-                printRoot.innerHTML = FreezerEditor(currentLayout, true, { exportView: true });
+                printRoot.innerHTML = FreezerEditor(currentLayout, true, { exportView: true, exportLayout });
                 document.body.appendChild(printRoot);
 
                 window.addEventListener('afterprint', () => printRoot.remove(), { once: true });
                 window.print();
             });
+
         }
 
         // FreezerEditor - Delete button

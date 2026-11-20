@@ -3,7 +3,7 @@
  * The returned HTML uses element ids/data attributes handled by the app controller.
  */
 import type { SavedLayout } from '../models/SavedLayout.js';
-import type { SamplePosition, FreezerBox, FreezerRack, Sample } from '../models/freezerLayout.js';
+import type { SamplePosition, FreezerBox, FreezerRack, FreezerShelf, Sample } from '../models/freezerLayout.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
 import { searchLayouts } from '../services/LayoutSearchService.js';
 import { LayoutSearchButton, LayoutSearchView } from './LayoutSearchView.js';
@@ -58,10 +58,14 @@ function renderColorPicker(kind: 'rack' | 'box', id: string, name: string, color
   `;
 }
 
+export type ExportLayout = 'current' | 'shelf-pages';
+
 /** Optional print/export and layout-search settings for FreezerEditor. */
 export interface FreezerEditorOptions {
   /** Print/PDF view: all shelves open, racks only, no box grids or controls. */
   exportView?: boolean;
+  /** With exportView: 'current' (default, unchanged output) or 'shelf-pages' (one shelf per page). */
+  exportLayout?: ExportLayout;
   searchQuery?: string;
   selectedSearchKey?: string | null;
   searchOpen?: boolean;
@@ -71,6 +75,7 @@ export interface FreezerEditorOptions {
 export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, options: FreezerEditorOptions = {}): string {
   const exportView = options.exportView ?? false;
   if (exportView) {
+    if (options.exportLayout === 'shelf-pages') return renderShelfPageExport(layout);
     return `
       <div class="freezer-editor freezer-export">
         <h2>${escapeHtml(layout.name)}</h2>
@@ -283,6 +288,66 @@ function renderPositionGrid(box: FreezerBox, boxRow: number, boxCol: number, rea
   }
 
   return html;
+}
+
+/** One printed page: some racks of one shelf (or an empty shelf), with its page number. */
+export interface ExportPage {
+  shelf: FreezerShelf;
+  racks: FreezerRack[];   // empty for an empty shelf
+  continued: boolean;     // true on the 2nd+ page of a shelf
+  pageNumber: number;
+  totalPages: number;
+}
+
+/** Racks per printed page: a whole shelf (the schema allows at most 6 racks), so a shelf never splits. */
+export const EXPORT_RACKS_PER_PAGE = FREEZER_LAYOUT_LIMITS.maxRacksPerShelf;
+
+/** Splits every shelf into pages, in shelf order; an empty shelf still gets one page. */
+export function buildShelfPages(layout: SavedLayout, racksPerPage = EXPORT_RACKS_PER_PAGE): ExportPage[] {
+  const pages: Omit<ExportPage, 'pageNumber' | 'totalPages'>[] = [];
+  for (const shelf of layout.freezerData.shelves) {
+    if (shelf.racks.length === 0) {
+      pages.push({ shelf, racks: [], continued: false });
+      continue;
+    }
+    for (let i = 0; i < shelf.racks.length; i += racksPerPage) {
+      pages.push({ shelf, racks: shelf.racks.slice(i, i + racksPerPage), continued: i > 0 });
+    }
+  }
+  return pages.map((page, i) => ({ ...page, pageNumber: i + 1, totalPages: pages.length }));
+}
+
+function renderShelfPageExport(layout: SavedLayout): string {
+  const pages = buildShelfPages(layout);
+  const content = pages.length === 0
+    ? `<section class="export-page"><header class="export-page-header"><h2>${escapeHtml(layout.name)}</h2></header><p class="export-empty">This freezer has no shelves.</p></section>`
+    : pages.map(page => renderExportPage(layout, page)).join('');
+  return `<div class="freezer-editor freezer-export-pages">${content}</div>`;
+}
+
+function renderExportPage(layout: SavedLayout, page: ExportPage): string {
+  const label = `${page.shelf.name}${page.continued ? ' (continued)' : ''}`;
+  return `
+    <section class="export-page" aria-label="${escapeHtml(label)}">
+      <header class="export-page-header">
+        <h2>${escapeHtml(layout.name)}</h2>
+      </header>
+      <div class="freezer">
+        <section class="shelf">
+          <div class="shelf-header"><h3>${escapeHtml(label)}</h3></div>
+          ${page.racks.length === 0
+            ? '<p class="export-empty">This shelf is empty.</p>'
+            : `<ul class="racks">${page.racks.map(renderExportRack).join('')}</ul>`}
+        </section>
+      </div>
+    </section>`;
+}
+
+function renderExportRack(rack: FreezerRack): string {
+  const rackColor = isHexColor(rack.color) ? rack.color : DEFAULT_LAYOUT_COLOR;
+  // The CSS sizes the name so its longest word fits the rack's width.
+  const longestWord = Math.max(1, ...rack.name.split(/\s+/).map(word => word.length));
+  return `<li class="rack color-coded" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}; --name-chars: ${longestWord}"><div class="rack-info"><h4>${escapeHtml(rack.name)}</h4></div></li>`;
 }
 
 function escapeHtml(value: string): string {
