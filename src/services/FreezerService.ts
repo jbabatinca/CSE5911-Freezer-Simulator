@@ -170,6 +170,149 @@ export function removeBox(layout: SavedLayout, shelfIndex: number, rackIndex: nu
   }
 }
 
+// MOVE / CUT / COPY / PASTE
+export type MoveResult = { ok: true } | { ok: false; message: string };
+export type ClipboardMode = 'cut' | 'copy';
+
+function findRack(layout: SavedLayout, rackId: string) {
+  for (const shelf of layout.freezerData.shelves) {
+    const rack = shelf.racks.find(r => r.id === rackId);
+    if (rack) return { shelf, rack };
+  }
+  return null;
+}
+
+function findBox(layout: SavedLayout, boxId: string) {
+  for (const shelf of layout.freezerData.shelves) {
+    for (const rack of shelf.racks) {
+      const slot = rack.boxSlots.find(s => s.box?.id === boxId);
+      if (slot) return { shelf, rack, slot };
+    }
+  }
+  return null;
+}
+
+/** Deep copy of a rack with fresh ids for the rack, its boxes, and their positions. */
+function cloneRack(rack: FreezerRack): FreezerRack {
+  const copy = structuredClone(rack);
+  copy.id = generateId('rack');
+  for (const slot of copy.boxSlots) {
+    if (slot.box) slot.box = cloneBox(slot.box);
+  }
+  return copy;
+}
+
+function cloneBox(box: FreezerBox): FreezerBox {
+  const copy = structuredClone(box);
+  copy.id = generateId('box');
+  for (const position of copy.positions) position.id = generateId('pos');
+  return copy;
+}
+
+/** Moves a rack to `toIndex` within its shelf (reorders the array). */
+export function moveRack(layout: SavedLayout, shelfId: string, rackId: string, toIndex: number): MoveResult {
+  const shelf = layout.freezerData.shelves.find(s => s.id === shelfId);
+  const from = shelf?.racks.findIndex(r => r.id === rackId) ?? -1;
+  if (!shelf || from < 0 || toIndex < 0 || toIndex >= shelf.racks.length) {
+    return { ok: false, message: 'Invalid rack move.' };
+  }
+  const [rack] = shelf.racks.splice(from, 1);
+  shelf.racks.splice(toIndex, 0, rack!);
+  return { ok: true };
+}
+
+/** Moves a box to another slot of the same rack. If the target slot is occupied, the two boxes swap. */
+export function moveBox(layout: SavedLayout, rackId: string, fromRow: number, fromCol: number, toRow: number, toCol: number): MoveResult {
+  const rack = findRack(layout, rackId)?.rack;
+  const from = rack?.boxSlots.find(s => s.row === fromRow && s.column === fromCol);
+  const to = rack?.boxSlots.find(s => s.row === toRow && s.column === toCol);
+  if (!from?.box || !to) return { ok: false, message: 'Invalid box move.' };
+  const moving = from.box;
+  from.box = to.box ?? null;   // occupied target => swap
+  to.box = moving;
+  return { ok: true };
+}
+function allPositions(racks: FreezerRack[]): SamplePosition[] {
+  return racks.flatMap(rack => rack.boxSlots.flatMap(slot => slot.box?.positions ?? []));
+}
+
+/** When items move to a different layout, copy the samples their positions point to into that layout's sample list. */
+function copySamples(from: SavedLayout, to: SavedLayout, positions: SamplePosition[]): void {
+  if (from === to) return;
+  to.freezerData.samples ??= [];
+  const list = to.freezerData.samples;
+  for (const position of positions) {
+    if (!position.sampleId || list.some(s => s.id === position.sampleId)) continue;
+    const sample = from.freezerData.samples?.find(s => s.id === position.sampleId);
+    if (sample) list.push(structuredClone(sample));
+  }
+}
+
+/**
+ * Pastes the CONTENTS of one shelf (its racks) over another shelf, replacing what was there. Names are untouched.
+ * Cut empties the source shelf (the shelf itself and its name stay); copy leaves it as is.
+ * `source` and `target` may be different layouts.
+ */
+export function pasteShelf(source: SavedLayout, target: SavedLayout, shelfId: string, targetShelfId: string, mode: ClipboardMode): MoveResult {
+  const from = source.freezerData.shelves.find(s => s.id === shelfId);
+  const to = target.freezerData.shelves.find(s => s.id === targetShelfId);
+  if (!from) return { ok: false, message: 'The copied shelf no longer exists.' };
+  if (!to) return { ok: false, message: 'Create a shelf first, then paste onto it.' };
+  if (from === to) return { ok: false, message: 'Choose a different shelf to paste onto.' };
+
+  if (mode === 'cut') {
+    to.racks = from.racks;      // same objects, ids kept
+    from.racks = [];
+  } else {
+    to.racks = from.racks.map(cloneRack);
+  }
+  copySamples(source, target, allPositions(to.racks));
+  return { ok: true };
+}
+
+/** Pastes a rack into the shelf `targetShelfId` of `target`. `source` and `target` may be different layouts. */
+export function pasteRack(source: SavedLayout, target: SavedLayout, targetShelfId: string, rackId: string, mode: ClipboardMode): MoveResult {
+  const from = findRack(source, rackId);
+  const targetShelf = target.freezerData.shelves.find(s => s.id === targetShelfId);
+  if (!from || !targetShelf) return { ok: false, message: 'The copied rack no longer exists.' };
+
+  const freesOwnSpot = mode === 'cut' && from.shelf === targetShelf;
+  if (targetShelf.racks.length - (freesOwnSpot ? 1 : 0) >= FREEZER_LAYOUT_LIMITS.maxRacksPerShelf) {
+    return { ok: false, message: `Shelf is full (${FREEZER_LAYOUT_LIMITS.maxRacksPerShelf} racks max).` };
+  }
+  if (mode === 'cut') {
+    from.shelf.racks.splice(from.shelf.racks.indexOf(from.rack), 1);
+    targetShelf.racks.push(from.rack);
+  } else {
+    targetShelf.racks.push(cloneRack(from.rack));
+  }
+  copySamples(source, target, allPositions([from.rack]));
+  return { ok: true };
+}
+
+/** Pastes a box into the rack `targetRackId` of `target`: slot (row, column) if given and empty, else the first free slot. */
+export function pasteBox(source: SavedLayout, target: SavedLayout, targetRackId: string, boxId: string, mode: ClipboardMode, row?: number, column?: number): MoveResult {
+  const from = findBox(source, boxId);
+  const targetRack = findRack(target, targetRackId)?.rack;
+  if (!from || !from.slot.box || !targetRack) return { ok: false, message: 'The copied box no longer exists.' };
+
+  const original = from.slot.box;
+  const box = mode === 'cut' ? original : cloneBox(original);
+  if (mode === 'cut') from.slot.box = null;   // free it first so pasting into the same rack can reuse the slot
+
+  const wanted = row !== undefined && column !== undefined
+    ? targetRack.boxSlots.find(s => s.row === row && s.column === column && !s.box)
+    : undefined;
+  const slot = wanted ?? targetRack.boxSlots.find(s => !s.box);
+  if (!slot) {
+    if (mode === 'cut') from.slot.box = original;   // undo
+    return { ok: false, message: `Rack is full (${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes max).` };
+  }
+  slot.box = box;
+  copySamples(source, target, box.positions);
+  return { ok: true };
+}
+
 // LAYOUT SAMPLES operations (manage samples in the freezer layout)
 // Samples live in a layout-wide list (freezerData.samples); box positions point to them by sampleId.
 /** Creates a sample (optional description) in the layout-wide list and returns it. Does not place it in any box. */

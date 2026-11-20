@@ -2656,3 +2656,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--danger);
 }
 
+.freezer-editor [draggable="true"] { cursor: grab; }
+.freezer-editor .dragging { opacity: 0.4; }
+.freezer-editor .drop-target { outline: 3px dashed var(--teal); outline-offset: 2px; }
+.editor-message:empty { display: none; }
+.editor-message { margin: 8px 0; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--teal); }
