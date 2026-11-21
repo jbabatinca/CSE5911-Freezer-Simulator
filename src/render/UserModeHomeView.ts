@@ -18,7 +18,7 @@ export function UserModeHomeView(): string {
     const questionSets = getAllQuestionSets();
     return `
     <div class="mode-home-view">
-        <h2>Student Worker or Staff</h2>
+        <h2>Student Worker</h2>
         <p>Explore the freezer layout, follow a guided tutorial, or practice finding sample locations with a training question set. View your results in Progress History.</p>
 
         <div class="mode-buttons">

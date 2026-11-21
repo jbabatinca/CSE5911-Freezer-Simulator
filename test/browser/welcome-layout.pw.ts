@@ -105,8 +105,8 @@ test('all screen panels share the page width and expanded freezer content scroll
   await page.locator('#btn-back-to-layouts').click();
   await page.locator('#btn-back').click();
   await page.locator('#btn-home').click();
-  await page.getByRole('button', { name: 'Student Worker or Staff', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Student Worker or Staff', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Student Worker', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Student Worker', exact: true })).toBeVisible();
   await expect(page.getByText('Explore the freezer layout, follow a guided tutorial, or practice finding sample locations with a training question set. View your results in Progress History.', { exact: true })).toBeVisible();
   await expectPanelWidth('.mode-home-view');
   await expectScarletTopBorder('.mode-home-view');

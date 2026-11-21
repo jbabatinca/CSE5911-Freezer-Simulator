@@ -18,7 +18,7 @@ export function HomeView(): string {
                 Lab Manager
             </button>
             <button id="btn-user-mode" class="mode-button">
-                Student Worker or Staff
+                Student Worker
             </button>
         </div>
     </div>
