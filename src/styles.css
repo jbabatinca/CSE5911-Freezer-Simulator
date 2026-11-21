@@ -2006,7 +2006,29 @@ button.layout-slot {
   resize: vertical;
 }
 
-.question-set-metadata .question-set-field:nth-child(2) {
+.question-set-time-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+  max-width: 220px;
+}
+
+.question-set-time-controls input {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.question-set-time-separator {
+  padding-bottom: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.question-set-metadata > .question-set-field:nth-child(2) {
   grid-row: span 2;
 }
 
@@ -2155,7 +2177,7 @@ button.layout-slot {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .question-set-metadata .question-set-field:nth-child(2) {
+  .question-set-metadata > .question-set-field:nth-child(2) {
     grid-row: auto;
   }
 

@@ -6,6 +6,8 @@
 /** Freezer item kind a training question asks the user to locate. */
 export type QuestionTargetType = 'rack' | 'box' | 'sample';
 
+export const DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS = 120;
+
 /** One question: its prompt and the rack, box, or sample-position id that is the answer. */
 export interface QuestionSetQuestion {
   id: string;
@@ -21,6 +23,7 @@ export interface QuestionSet {
   description: string;
   layoutId: string;
   questions: QuestionSetQuestion[];
+  timeLimitSeconds?: number;
   createdAt: string;
   updatedAt: string;
 }

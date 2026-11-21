@@ -1,7 +1,8 @@
 /** QuestionSetCreatorView.ts - manages an unsaved question-set draft and renders the admin list/editor HTML. */
 import type { QuestionSet, QuestionSetQuestion, QuestionTargetType } from '../models/QuestionSet.js';
+import { DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
-import { deleteQuestionSet, generateQuestionId, generateQuestionSetId, getAllQuestionSets, getQuestionSet, saveQuestionSet } from '../services/QuestionSetService.js';
+import { deleteQuestionSet, generateQuestionId, generateQuestionSetId, getAllQuestionSets, getQuestionSet, getQuestionSetTimeLimitSeconds, saveQuestionSet } from '../services/QuestionSetService.js';
 import { getAllLayouts, getLayout } from '../services/StorageService.js';
 import { getQuestionTargets as getTargets } from '../services/QuestionTargetService.js';
 
@@ -9,6 +10,8 @@ import { getQuestionTargets as getTargets } from '../services/QuestionTargetServ
 let draft: QuestionSet | null = null;
 let editorError = '';
 let expandedQuestionId: string | null = null;
+let timeLimitMinutes = String(Math.floor(DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS / 60));
+let timeLimitSecondsInput = String(DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS % 60);
 
 /** Escapes a supplied string for HTML text or quoted attributes and returns the safe markup value. */
 function escapeHtml(value: string): string {
@@ -36,11 +39,14 @@ export function startQuestionSetCreation(): void {
         description: '',
         layoutId: layouts[0]?.id ?? '',
         questions: [],
+        timeLimitSeconds: DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS,
         createdAt: now,
         updatedAt: now
     };
     editorError = '';
     expandedQuestionId = null;
+    timeLimitMinutes = String(Math.floor(DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS / 60));
+    timeLimitSecondsInput = String(DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS % 60);
 }
 
 /** Loads the set with the supplied id into an editable draft, or clears it if missing; returns nothing. */
@@ -50,6 +56,9 @@ export function editQuestionSet(id: string): void {
     draft = questionSet ? JSON.parse(JSON.stringify(questionSet)) as QuestionSet : null;
     editorError = '';
     expandedQuestionId = draft?.questions[0]?.id ?? null;
+    const timeLimit = getQuestionSetTimeLimitSeconds(draft);
+    timeLimitMinutes = String(Math.floor(timeLimit / 60));
+    timeLimitSecondsInput = String(timeLimit % 60);
 }
 
 /** Takes no arguments, discards the current draft and editor feedback, and returns nothing. */
@@ -67,6 +76,18 @@ export function setQuestionSetName(name: string): void {
 /** Assigns the supplied description to the draft when one exists; returns nothing. */
 export function setQuestionSetDescription(description: string): void {
     if (draft) draft.description = description;
+}
+
+/** Updates the time-limit draft from the supplied minutes or seconds input. */
+export function setQuestionSetTimeLimit(unit: 'minutes' | 'seconds', value: string): void {
+    if (!draft) return;
+    if (unit === 'minutes') timeLimitMinutes = value;
+    else timeLimitSecondsInput = value;
+}
+
+/** Formats valid seconds with two digits, leaving incomplete or invalid input unchanged. */
+export function formatTimeLimitSeconds(value: string): string {
+    return /^\d+$/.test(value) && Number(value) <= 59 ? String(Number(value)).padStart(2, '0') : value;
 }
 
 /** Selects the supplied layout id and resets question targets if that layout exists; returns nothing. */
@@ -149,6 +170,15 @@ export function saveQuestionSetDraft(): boolean {
         editorError = 'Choose a saved freezer layout.';
         return false;
     }
+    const minutes = Number(timeLimitMinutes);
+    const seconds = Number(timeLimitSecondsInput);
+    // Store one total-seconds value so existing saved sets remain compatible.
+    const timeLimitSeconds = minutes * 60 + seconds;
+    if (!/^\d+$/.test(timeLimitMinutes) || !/^\d+$/.test(timeLimitSecondsInput) ||
+        seconds > 59 || timeLimitSeconds <= 0 || !Number.isSafeInteger(timeLimitSeconds * 1000)) {
+        editorError = 'Enter whole minutes and seconds from 0 to 59, with a time limit greater than zero.';
+        return false;
+    }
     if (draft.questions.length === 0) {
         editorError = 'Add at least one question.';
         return false;
@@ -165,6 +195,7 @@ export function saveQuestionSetDraft(): boolean {
 
     draft.name = draft.name.trim();
     draft.description = draft.description.trim();
+    draft.timeLimitSeconds = timeLimitSeconds;
     draft.updatedAt = new Date().toISOString();
     saveQuestionSet(draft);
     draft = null;
@@ -248,6 +279,20 @@ function renderQuestionSetEditor(): string {
                         ${layouts.length === 0 ? '<option value="">No saved layouts</option>' : layouts.map(layout => `<option value="${escapeHtml(layout.id)}" ${draft!.layoutId === layout.id ? 'selected' : ''}>${escapeHtml(layout.name)}</option>`).join('')}
                     </select>
                 </label>
+                <div class="question-set-field">
+                    <span>Time limit</span>
+                    <div class="question-set-time-controls">
+                        <label class="question-set-field">
+                            <span>Minutes</span>
+                            <input id="question-set-time-minutes" type="number" min="0" step="1" required value="${escapeHtml(timeLimitMinutes)}">
+                        </label>
+                        <span class="question-set-time-separator" aria-hidden="true">:</span>
+                        <label class="question-set-field">
+                            <span>Seconds</span>
+                            <input id="question-set-time-seconds" type="number" min="0" max="59" step="1" required value="${escapeHtml(formatTimeLimitSeconds(timeLimitSecondsInput))}">
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="question-set-question-list">
                 <header class="question-set-section-header">

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   deleteQuestionSet, generateQuestionId, generateQuestionSetId,
-  getAllQuestionSets, getQuestionSet, saveQuestionSet,
+  getAllQuestionSets, getQuestionSet, getQuestionSetTimeLimitSeconds, saveQuestionSet,
 } from '../../src/services/QuestionSetService.js';
 import { makeQuestionSet } from '../helpers/questionSets.js';
 
@@ -25,6 +25,17 @@ describe('QuestionSetService', () => {
     saveQuestionSet(first);
     saveQuestionSet(second);
     expect(JSON.parse(localStorage.getItem('freezer-question-sets')!)).toEqual([first, second]);
+  });
+
+  it('persists a configured time limit and defaults legacy or invalid limits', () => {
+    const configured = makeQuestionSet({ timeLimitSeconds: 240 });
+    saveQuestionSet(configured);
+    expect(getQuestionSet('set-1')?.timeLimitSeconds).toBe(240);
+    expect(getQuestionSetTimeLimitSeconds(getQuestionSet('set-1'))).toBe(240);
+    expect(getQuestionSetTimeLimitSeconds(makeQuestionSet())).toBe(120);
+    for (const timeLimitSeconds of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER]) {
+      expect(getQuestionSetTimeLimitSeconds(makeQuestionSet({ timeLimitSeconds }))).toBe(120);
+    }
   });
 
   it('replaces the set with the same ID and preserves unrelated sets', () => {

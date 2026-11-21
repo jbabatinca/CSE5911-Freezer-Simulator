@@ -19,6 +19,8 @@ import {
     cancelQuestionSetEditing,
     setQuestionSetName,
     setQuestionSetDescription,
+    setQuestionSetTimeLimit,
+    formatTimeLimitSeconds,
     setQuestionSetLayout,
     addQuestionToSet,
     toggleQuestionEditor,
@@ -726,6 +728,15 @@ export function App(): void {
 
         const questionSetDescription = document.getElementById('question-set-description') as HTMLTextAreaElement | null;
         questionSetDescription?.addEventListener('input', () => setQuestionSetDescription(questionSetDescription.value));
+
+        const questionSetTimeMinutes = document.getElementById('question-set-time-minutes') as HTMLInputElement | null;
+        questionSetTimeMinutes?.addEventListener('input', () => setQuestionSetTimeLimit('minutes', questionSetTimeMinutes.value));
+        const questionSetTimeSeconds = document.getElementById('question-set-time-seconds') as HTMLInputElement | null;
+        questionSetTimeSeconds?.addEventListener('input', () => setQuestionSetTimeLimit('seconds', questionSetTimeSeconds.value));
+        questionSetTimeSeconds?.addEventListener('blur', () => {
+            questionSetTimeSeconds.value = formatTimeLimitSeconds(questionSetTimeSeconds.value);
+            setQuestionSetTimeLimit('seconds', questionSetTimeSeconds.value);
+        });
 
         // Changing the layout re-renders because the available targets depend on the chosen layout
         const questionSetLayout = document.getElementById('question-set-layout') as HTMLSelectElement | null;

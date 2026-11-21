@@ -52,6 +52,24 @@ describe('Question set application workflow', () => {
     document.body.innerHTML = '';
   });
 
+  it('pads seconds on blur and keeps invalid seconds visible for validation', () => {
+    App();
+    logIn();
+    click('#btn-question-set-new');
+    enter('#question-set-name', 'Clock test');
+    enter('#question-set-time-seconds', '5');
+    element(document, '#question-set-time-seconds').dispatchEvent(new Event('blur'));
+    expect(element<HTMLInputElement>(document, '#question-set-time-seconds').value).toBe('05');
+    click('#btn-question-set-add');
+    expect(element<HTMLInputElement>(document, '#question-set-time-seconds').value).toBe('05');
+    enter('#question-set-time-seconds', '60');
+    element(document, '#question-set-time-seconds').dispatchEvent(new Event('blur'));
+    expect(element<HTMLInputElement>(document, '#question-set-time-seconds').value).toBe('60');
+    click('#btn-question-set-save');
+    expect(element(document, '[role="alert"]').textContent).toContain('seconds from 0 to 59');
+    expect(getAllQuestionSets()).toHaveLength(0);
+  });
+
   it('creates and saves a set as admin, then finds and completes it as user without reloading', () => {
     App();
     // Visit user home before creation so the later visit must read fresh storage.
@@ -63,6 +81,10 @@ describe('Question set application workflow', () => {
     expect(element<HTMLInputElement>(document, '#question-set-name').value).toBe('');
     enter('#question-set-name', 'Lab orientation');
     enter('#question-set-description', 'Practice all three target types');
+    expect(element<HTMLInputElement>(document, '#question-set-time-minutes').value).toBe('2');
+    expect(element<HTMLInputElement>(document, '#question-set-time-seconds').value).toBe('00');
+    enter('#question-set-time-minutes', '1');
+    enter('#question-set-time-seconds', '15');
 
     function addQuestion(type: QuestionTargetType, prompt: string, target: string) {
       click('#btn-question-set-add');
@@ -77,7 +99,7 @@ describe('Question set application workflow', () => {
     const sets = getAllQuestionSets();
     expect(sets).toHaveLength(1);
     expect(sets[0]).toMatchObject({
-      name: 'Lab orientation', description: 'Practice all three target types',
+      name: 'Lab orientation', description: 'Practice all three target types', timeLimitSeconds: 75,
       questions: [
         expect.objectContaining({ targetType: 'rack', targetId: 'layout-1-rack-2', prompt: 'Choose rack two' }),
         expect.objectContaining({ targetType: 'box', targetId: 'layout-1-box-1', prompt: 'Choose box one' }),
@@ -93,6 +115,7 @@ describe('Question set application workflow', () => {
     expect(element(document, '#user-question-set-select').textContent).toContain('Lab orientation');
     expect(button('#btn-open-question-set').disabled).toBe(true);
     chooseSet(sets[0]!.id);
+    expect(element(document, '#question-set-timer strong').textContent).toBe('1:15');
     expect(element(document, '.training-question h2').textContent).toBe('Choose rack two');
     click('[data-question-set-answer="layout-1-rack-2"]');
     expect(element(document, '#question-set-feedback').textContent).toContain('Correct!');

@@ -3,9 +3,17 @@
  * Question sets are stored together as a JSON array under one key.
  */
 import type { QuestionSet } from '../models/QuestionSet.js';
+import { DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS } from '../models/QuestionSet.js';
 
 // Keep this key stable so saved sets remain available across app sessions.
 const QUESTION_SET_STORAGE_KEY = 'freezer-question-sets';
+
+export function getQuestionSetTimeLimitSeconds(questionSet: QuestionSet | null): number {
+    const seconds = questionSet?.timeLimitSeconds;
+    return typeof seconds === 'number' && seconds > 0 && Number.isSafeInteger(seconds * 1000) && Number.isInteger(seconds)
+        ? seconds
+        : DEFAULT_QUESTION_SET_TIME_LIMIT_SECONDS;
+}
 
 /** Takes no arguments; returns all saved question sets, or an empty array when none are stored. */
 export function getAllQuestionSets(): QuestionSet[] {
