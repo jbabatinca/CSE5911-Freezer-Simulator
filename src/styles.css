@@ -258,11 +258,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 8px;
 }
 
-.layout-search-toggle[aria-expanded="true"] {
-  border-color: var(--action);
-  background: var(--surface-hover);
-}
-
 .layout-search-toggle svg,
 .layout-search-field svg {
   flex: 0 0 18px;
@@ -438,7 +433,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
-    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set) {
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
+    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf) {
   border-color: var(--action);
   color: #fff;
   background: var(--action);
@@ -447,7 +443,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 :is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
-    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set):hover {
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
+    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf):hover {
   border-color: var(--action-hover);
   background: var(--action-hover);
 }
@@ -485,8 +482,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   overflow-wrap: anywhere;
 }
 
-.layout-slot {
-  border-top: 4px solid var(--primary);
+button.layout-slot {
+  border-top: 4px solid var(--scarlet);
   background: var(--surface-raised);
 }
 
@@ -607,6 +604,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Freezer, shelf, and horizontally scrolling rack layout. */
+#btn-expand-all-shelves {
+  margin-bottom: 12px;
+}
+
 .freezer {
   display: flex;
   flex-direction: column;

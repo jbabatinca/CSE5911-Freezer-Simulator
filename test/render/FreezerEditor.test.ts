@@ -47,7 +47,7 @@ describe('Freezer Editor View', () => {
     };
 
     (layoutState.getCurrentEditingLayout as any).mockReturnValue(testLayout);
-    (editorState.getExpandedShelfId as any).mockReturnValue(null);
+    vi.mocked(editorState.getExpandedShelfIds).mockReturnValue(new Set());
     (editorState.getExpandedRackId as any).mockReturnValue(null);
     (editorState.getExpandedBoxId as any).mockReturnValue(null);
   });
@@ -71,12 +71,6 @@ describe('Freezer Editor View', () => {
   });
 
   describe('Expansion State Management', () => {
-    it('should track expanded shelf', () => {
-      const expandedShelfId = editorState.getExpandedShelfId();
-      expect(editorState.getExpandedShelfId).toBeDefined();
-      expect(editorState.setExpandedShelfId).toBeDefined();
-    });
-
     it('should track expanded rack', () => {
       expect(editorState.getExpandedRackId).toBeDefined();
       expect(editorState.setExpandedRackId).toBeDefined();
@@ -87,12 +81,10 @@ describe('Freezer Editor View', () => {
       expect(editorState.setExpandedBoxId).toBeDefined();
     });
 
-    it('should toggle shelf expansion', () => {
-      (editorState.getExpandedShelfId as any).mockReturnValue(null);
-      expect(editorState.getExpandedShelfId()).toBeNull();
-
-      (editorState.getExpandedShelfId as any).mockReturnValue('shelf-1');
-      expect(editorState.getExpandedShelfId()).toBe('shelf-1');
+    it('should show racks only when their shelf is expanded', () => {
+      expect(FreezerEditor(testLayout)).not.toContain('id="rack-rack-1"');
+      vi.mocked(editorState.getExpandedShelfIds).mockReturnValue(new Set(['shelf-1']));
+      expect(FreezerEditor(testLayout)).toContain('id="rack-rack-1"');
     });
   });
 
@@ -198,7 +190,7 @@ function makeLayout(options: { rackColor?: string; boxColor?: string; rackName?:
 
 // Sets which shelf, rack, and box are expanded so their contents render
 function expand({ rackExpanded = false }: { rackExpanded?: boolean } = {}) {
-  (editorState.getExpandedShelfId as any).mockReturnValue('shelf-1');
+  vi.mocked(editorState.getExpandedShelfIds).mockReturnValue(new Set(['shelf-1']));
   (editorState.getExpandedRackId as any).mockReturnValue(rackExpanded ? 'rack-1' : null);
   (editorState.getExpandedBoxId as any).mockReturnValue(null);
 }
@@ -313,7 +305,7 @@ describe('Export to PDF', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    (editorState.getExpandedShelfId as any).mockReturnValue(null);
+    vi.mocked(editorState.getExpandedShelfIds).mockReturnValue(new Set());
     (editorState.getExpandedRackId as any).mockReturnValue(null);
     (editorState.getExpandedBoxId as any).mockReturnValue(null);
 
@@ -430,7 +422,7 @@ describe('Position grid', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    (editorState.getExpandedShelfId as any).mockReturnValue('shelf-1');
+    vi.mocked(editorState.getExpandedShelfIds).mockReturnValue(new Set(['shelf-1']));
     (editorState.getExpandedRackId as any).mockReturnValue('rack-1');
     (editorState.getExpandedBoxId as any).mockReturnValue('box-1');
   });
