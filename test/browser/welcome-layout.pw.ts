@@ -4,6 +4,10 @@ import { makeLayout } from '../helpers/questionSets.js';
 test('welcome panel fills the available viewport and keeps its content centered', async ({ page }) => {
   await page.goto('/');
 
+  await expect(page.getByRole('banner').getByRole('heading', { level: 1, name: 'Freezer Tag', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Freezer Tag' })).toBeVisible();
+  await expect(page.getByText('Choose your role to get started.', { exact: true })).toBeVisible();
+
   const viewport = page.viewportSize();
   const header = await page.locator('.app-header').boundingBox();
   const panel = await page.locator('.home-view').boundingBox();
@@ -51,12 +55,38 @@ test('all screen panels share the page width and expanded freezer content scroll
 
   await expectPanelWidth('.home-view');
   await expectScarletTopBorder('.home-view');
-  await page.locator('#btn-admin-mode').click();
-  await page.locator('#admin-password-input').fill('123456');
-  await page.locator('#btn-admin-login').click();
+  const labManagerButton = page.getByRole('button', { name: 'Lab Manager', exact: true });
+  const loginDialog = page.locator('.admin-password-modal');
+  const passwordInput = loginDialog.getByPlaceholder('Enter lab manager password', { exact: true });
+  const loginButton = loginDialog.getByRole('button', { name: 'Login', exact: true });
+  await labManagerButton.click();
+  await expect(loginDialog.getByRole('heading', { name: 'Lab Manager', exact: true })).toBeVisible();
+  await expect(loginDialog.getByText('Enter the lab manager password to configure freezer layouts and manage training exercises.', { exact: true })).toBeVisible();
+  await passwordInput.fill('invalid-password');
+  await loginButton.click();
+  await expect(loginDialog.getByText('Incorrect password', { exact: true })).toBeVisible();
+  await loginDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(loginDialog).toBeHidden();
+  await expect(labManagerButton).toBeVisible();
+
+  await labManagerButton.click();
+  await passwordInput.fill('123456');
+  await loginButton.click();
+  await expect(loginDialog).toBeHidden();
+  const dashboard = page.locator('.mode-home-view');
+  await expect(dashboard.getByRole('heading', { name: 'Lab Manager', exact: true })).toBeVisible();
+  await expect(dashboard.getByText('Create and edit virtual freezer layouts, build custom training question sets, and review training results in Progress History.', { exact: true })).toBeVisible();
   await expectPanelWidth('.mode-home-view');
   await expectScarletTopBorder('.mode-home-view');
-  await page.locator('#btn-admin-configuration').click();
+
+  await dashboard.getByRole('button', { name: 'Question Set Creator Mode', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Question Set Creator Mode', exact: true })).toBeVisible();
+  await page.locator('#btn-back').click();
+  await dashboard.getByRole('button', { name: 'Progress History', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Progress History', exact: true })).toBeVisible();
+  await page.locator('#btn-back').click();
+
+  await dashboard.getByRole('button', { name: 'Configuration Mode', exact: true }).click();
   await expectPanelWidth('.layout-dashboard');
   await expectScarletTopBorder('.layout-dashboard');
   await page.locator('#layout-layout-1').click();
@@ -75,10 +105,20 @@ test('all screen panels share the page width and expanded freezer content scroll
   await page.locator('#btn-back-to-layouts').click();
   await page.locator('#btn-back').click();
   await page.locator('#btn-home').click();
-  await page.locator('#btn-user-mode').click();
+  await page.getByRole('button', { name: 'Student Worker or Staff', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Student Worker or Staff', exact: true })).toBeVisible();
+  await expect(page.getByText('Explore the freezer layout, follow a guided tutorial, or practice finding sample locations with a training question set. View your results in Progress History.', { exact: true })).toBeVisible();
   await expectPanelWidth('.mode-home-view');
   await expectScarletTopBorder('.mode-home-view');
-  await page.locator('#btn-freezer-layouts').click();
+
+  await page.getByRole('button', { name: 'Tutorial Mode', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Freezer location tutorial', exact: true })).toBeVisible();
+  await page.locator('#btn-back').click();
+  await page.getByRole('button', { name: 'Progress History', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Progress History', exact: true })).toBeVisible();
+  await page.locator('#btn-back').click();
+
+  await page.getByRole('button', { name: 'Layout View', exact: true }).click();
   await expectPanelWidth('.layout-dashboard');
   await expectScarletTopBorder('.layout-dashboard');
   await page.locator('#layout-layout-1').click();

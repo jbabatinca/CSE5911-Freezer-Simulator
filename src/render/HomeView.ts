@@ -3,22 +3,22 @@
  */
 
 /**
- * Renders the welcome page with the Admin Mode and User Mode buttons.
- * Takes no arguments and returns an HTML string. Clicks are handled in App.ts:
- * Admin Mode opens the password modal, User Mode goes straight to user home.
+ * Renders the welcome page and its role options. App.ts opens the admin
+ * password modal for lab managers and user home for student workers and staff.
  */
 export function HomeView(): string {
     return `
     <div class="home-view">
-        <h1>Welcome to Freezer Simulator</h1>
-        <p>A comprehensive web-based training and management tool for research laboratory freezer systems. Administrators can create and configure custom freezer layouts and training scenarios. Users can explore freezer layouts and complete training modules.</p>
+        <h1>Welcome to Freezer Tag</h1>
+        <p>Freezer Tag is a web-based training simulator for the College of Nursing. Lab managers can build virtual freezer layouts and create custom training exercises. Student workers and staff can practice navigating shelves, racks, and boxes to find sample locations before using the real freezer.</p>
+        <p>Choose your role to get started.</p>
 
         <div class="home-buttons">
             <button id="btn-admin-mode" class="mode-button">
-                Admin Mode
+                Lab Manager
             </button>
             <button id="btn-user-mode" class="mode-button">
-                User Mode
+                Student Worker or Staff
             </button>
         </div>
     </div>
