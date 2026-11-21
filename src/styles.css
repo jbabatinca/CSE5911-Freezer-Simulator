@@ -413,6 +413,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 17px;
 }
 
+.home-view p + p {
+  margin-top: 16px;
+}
+
 .mode-home-view {
   text-align: center;
 }

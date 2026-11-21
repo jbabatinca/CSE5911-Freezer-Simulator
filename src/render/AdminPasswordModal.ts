@@ -9,12 +9,12 @@ export function AdminPasswordModal(): string {
       <div class="modal-content admin-password-modal">
         <img class="admin-password-brand admin-password-brand-light" src="${adminPasswordBrandUrl}" alt="The Ohio State University" width="344" height="50">
         <img class="admin-password-brand admin-password-brand-dark" src="${adminPasswordBrandDarkUrl}" alt="The Ohio State University" width="546" height="79">
-        <h2>Admin Mode</h2>
-        <p>Enter admin password to access configuration and training upload features.</p>
+        <h2>Lab Manager</h2>
+        <p>Enter the lab manager password to configure freezer layouts and manage training exercises.</p>
         <input
           type="password"
           id="admin-password-input"
-          placeholder="Enter password"
+          placeholder="Enter lab manager password"
           style="width: 100%; padding: 8px; margin: 10px 0; box-sizing: border-box;"
         />
         <div style="margin-top: 15px; display: flex; gap: 10px;">
