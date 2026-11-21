@@ -4,6 +4,7 @@ import {
   startQuestionSetRun, submitQuestionSetAnswer,
 } from '../../src/render/QuestionSetRunView.js';
 import { saveQuestionSet } from '../../src/services/QuestionSetService.js';
+import { getAttempts } from '../../src/services/AttemptHistoryService.js';
 import { saveLayout } from '../../src/services/StorageService.js';
 import { element, makeLayout, makeQuestionSet, parseView } from '../helpers/questionSets.js';
 
@@ -30,6 +31,41 @@ describe('Training timing', () => {
   it('starts the set countdown at 2:00', () => {
     expect(timer()).toBe('2:00');
     expect(element(view(), '#question-set-timer').getAttribute('role')).toBe('timer');
+  });
+
+  it('uses the saved limit across questions and after three misses', () => {
+    saveQuestionSet(makeQuestionSet({ timeLimitSeconds: 75 }));
+    startQuestionSetRun('set-1');
+    expect(timer()).toBe('1:15');
+    vi.advanceTimersByTime(10_000);
+    submitQuestionSetAnswer('layout-1-rack-1');
+    expect(feedback()).toContain('Time on this question: 10.0s');
+    advanceQuestionSetRun();
+    expect(timer()).toBe('1:05');
+    for (let miss = 0; miss < 3; miss++) submitQuestionSetAnswer('layout-1-box-2');
+    expect(view().textContent).toContain('Question 1 / 3');
+    expect(score()).toContain('Score: 0 / 3 · Misses: 0 / 3');
+    expect(timer()).toBe('1:15');
+  });
+
+  it('restarts at the configured limit on expiry and records the configured duration', () => {
+    saveQuestionSet(makeQuestionSet({ timeLimitSeconds: 180 }));
+    startQuestionSetRun('set-1');
+    expect(timer()).toBe('3:00');
+    submitQuestionSetAnswer('layout-1-rack-1');
+    advanceQuestionSetRun();
+    submitQuestionSetAnswer('layout-1-box-2');
+    vi.advanceTimersByTime(179_999);
+    expect(timer()).toBe('0:01');
+    expect(view().textContent).toContain('Question 2 / 3');
+    vi.advanceTimersByTime(1);
+    expect(refreshQuestionSetTimer()).toBe(true);
+    expect(view().textContent).toContain('Question 1 / 3');
+    expect(feedback()).toContain('Time expired');
+    expect(feedback()).not.toContain('Time so far');
+    expect(score()).toContain('Score: 0 / 3 · Misses: 0 / 3');
+    expect(timer()).toBe('3:00');
+    expect(getAttempts()[0]).toMatchObject({ outcome: 'failed-time', totalTimeMs: 180_000 });
   });
 
   it('shows non-zero elapsed time in the feedback area after an answer', () => {

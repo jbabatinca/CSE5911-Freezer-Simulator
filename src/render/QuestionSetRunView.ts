@@ -5,7 +5,7 @@
 import type { QuestionSetQuestion, QuestionSetResult, QuestionTargetType } from '../models/QuestionSet.js';
 import type { SavedLayout } from '../models/SavedLayout.js';
 import type { FreezerBox, FreezerRack } from '../models/freezerLayout.js';
-import { getQuestionSet } from '../services/QuestionSetService.js';
+import { getQuestionSet, getQuestionSetTimeLimitSeconds } from '../services/QuestionSetService.js';
 import { getLayout } from '../services/StorageService.js';
 import { resolveQuestionTarget } from '../services/QuestionTargetService.js';
 import { FREEZER_LAYOUT_LIMITS, isHexColor } from '../models/freezerLayout.js';
@@ -23,8 +23,7 @@ let selectedTargetId: string | null = null;
 let results: QuestionSetResult[] = [];
 let restartReason: 'misses' | 'time' | null = null;
 
-// A run restarts from its first question when this 2-minute limit expires.
-const SET_TIME_LIMIT_MS = 120_000;
+let setTimeLimitMs = getQuestionSetTimeLimitSeconds(null) * 1000;
 // At 20 seconds remaining, the visible countdown is marked as low.
 const LOW_TIME_MS = 20_000;
 let setStartedAt = 0;
@@ -46,7 +45,7 @@ function resetQuestion(): void {
 /** Takes no arguments; returns the active run's remaining milliseconds, frozen after completion. */
 export function getQuestionSetRemainingMs(): number {
     if (frozenRemainingMs !== null) return frozenRemainingMs;
-    return Math.max(0, SET_TIME_LIMIT_MS - (Date.now() - setStartedAt));
+    return Math.max(0, setTimeLimitMs - (Date.now() - setStartedAt));
 }
 
 /** Takes milliseconds `ms`; returns a rounded-up `minutes:seconds` countdown string. */
@@ -95,7 +94,7 @@ function recordAttempt(outcome: AttemptOutcome): void {
     outcome,
     score: getScore(),
     totalQuestions: questionSet.questions.length,
-    totalTimeMs: Math.min(Date.now() - setStartedAt, SET_TIME_LIMIT_MS),
+    totalTimeMs: Math.min(Date.now() - setStartedAt, setTimeLimitMs),
     questions: results.map(result => ({
       ...result,
       targetType: questionSet.questions.find(q => q.id === result.questionId)?.targetType ?? 'rack'
@@ -126,6 +125,7 @@ export function startQuestionSetRun(questionSetId: string): void {
     runComplete = false;
     results = [];
     restartReason = null;
+    setTimeLimitMs = getQuestionSetTimeLimitSeconds(getQuestionSet(questionSetId)) * 1000;
     setStartedAt = Date.now();
     frozenRemainingMs = null;
     resetQuestion();

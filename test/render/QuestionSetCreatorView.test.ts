@@ -28,6 +28,8 @@ describe('Question set creator', () => {
     expect(input('#question-set-name').value).toBe('');
     expect(input('#question-set-description').value).toBe('');
     expect(input('#question-set-layout').value).toBe('layout-1');
+    expect(input('#question-set-time-minutes').value).toBe('2');
+    expect(input('#question-set-time-seconds').value).toBe('00');
     expect(questionIds()).toEqual([]);
     expect(view().textContent).toContain('Add a question');
     expect(getAllQuestionSets()).toEqual([]);
@@ -66,6 +68,64 @@ describe('Question set creator', () => {
     expect(input('#question-set-name').value).toBe('New name');
     expect(input('#question-set-description').value).toBe('New instructions');
     expect(input('#question-set-layout').value).toBe('layout-2');
+  });
+
+  it('saves a custom time limit and loads it for editing', () => {
+    creator.startQuestionSetCreation();
+    creator.setQuestionSetName('Timed set');
+    creator.setQuestionSetTimeLimit('minutes', '1');
+    creator.setQuestionSetTimeLimit('seconds', '15');
+    creator.addQuestionToSet();
+    expect(input('#question-set-time-minutes').value).toBe('1');
+    expect(input('#question-set-time-seconds').value).toBe('15');
+    expect(creator.saveQuestionSetDraft()).toBe(true);
+    const saved = getAllQuestionSets()[0]!;
+    expect(saved.timeLimitSeconds).toBe(75);
+    creator.editQuestionSet(saved.id);
+    expect(input('#question-set-time-minutes').value).toBe('1');
+    expect(input('#question-set-time-seconds').value).toBe('15');
+    creator.setQuestionSetTimeLimit('minutes', '3');
+    creator.setQuestionSetTimeLimit('seconds', '0');
+    expect(creator.saveQuestionSetDraft()).toBe(true);
+    expect(getQuestionSet(saved.id)?.timeLimitSeconds).toBe(180);
+  });
+
+  it('defaults legacy sets to 120 seconds when editing', () => {
+    openSaved();
+    expect(input('#question-set-time-minutes').value).toBe('2');
+    expect(input('#question-set-time-seconds').value).toBe('00');
+    expect(creator.saveQuestionSetDraft()).toBe(true);
+    expect(getQuestionSet('set-1')?.timeLimitSeconds).toBe(120);
+  });
+
+  it.each([1, 59])('saves and reloads a sub-minute limit of %s seconds', seconds => {
+    openSaved();
+    creator.setQuestionSetTimeLimit('minutes', '0');
+    creator.setQuestionSetTimeLimit('seconds', String(seconds));
+    expect(creator.saveQuestionSetDraft()).toBe(true);
+    expect(getQuestionSet('set-1')?.timeLimitSeconds).toBe(seconds);
+    creator.editQuestionSet('set-1');
+    expect(input('#question-set-time-minutes').value).toBe('0');
+    expect(input('#question-set-time-seconds').value).toBe(String(seconds).padStart(2, '0'));
+  });
+
+  it.each([
+    ['0', '00'], ['5', '05'], ['09', '09'], ['59', '59'],
+    ['', ''], ['60', '60'], ['1.5', '1.5'], ['-1', '-1'],
+  ])('formats seconds "%s" as "%s" without hiding invalid input', (value, expected) => {
+    expect(creator.formatTimeLimitSeconds(value)).toBe(expected);
+  });
+
+  it.each([
+    ['', '1'], ['0', '0'], ['-1', '0'], ['1.5', '0'], ['1e2', '0'], ['NaN', '0'],
+    ['150119987580', '0'], ['1', ''], ['1', '-1'], ['1', '60'], ['1', '1.5'], ['1', '1e1'],
+  ])('rejects invalid time limit %s minutes and %s seconds', (minutes, seconds) => {
+    const original = openSaved();
+    creator.setQuestionSetTimeLimit('minutes', minutes);
+    creator.setQuestionSetTimeLimit('seconds', seconds);
+    expect(creator.saveQuestionSetDraft()).toBe(false);
+    expect(element(view(), '[role="alert"]').textContent).toContain('time limit greater than zero');
+    expect(getQuestionSet(original.id)).toEqual(original);
   });
 
   it('replaces stale rack, box, and sample targets when the layout changes', () => {
