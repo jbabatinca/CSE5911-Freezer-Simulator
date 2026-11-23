@@ -209,15 +209,21 @@ function cloneBox(box: FreezerBox): FreezerBox {
   return copy;
 }
 
-/** Moves a rack to `toIndex` within its shelf (reorders the array). */
-export function moveRack(layout: SavedLayout, shelfId: string, rackId: string, toIndex: number): MoveResult {
-  const shelf = layout.freezerData.shelves.find(s => s.id === shelfId);
-  const from = shelf?.racks.findIndex(r => r.id === rackId) ?? -1;
-  if (!shelf || from < 0 || toIndex < 0 || toIndex >= shelf.racks.length) {
-    return { ok: false, message: 'Invalid rack move.' };
+/** Moves a rack to `toIndex` on shelf `toShelfId`. Same shelf = reorder, other shelf = move it there. */
+export function moveRack(layout: SavedLayout, toShelfId: string, rackId: string, toIndex: number): MoveResult {
+  const from = findRack(layout, rackId);
+  const toShelf = layout.freezerData.shelves.find(s => s.id === toShelfId);
+  if (!from || !toShelf) return { ok: false, message: 'Invalid rack move.' };
+
+  const sameShelf = from.shelf === toShelf;
+  const maxIndex = sameShelf ? toShelf.racks.length - 1 : toShelf.racks.length; // other shelf: may append
+  if (toIndex < 0 || toIndex > maxIndex) return { ok: false, message: 'Invalid rack move.' };
+  if (!sameShelf && toShelf.racks.length >= FREEZER_LAYOUT_LIMITS.maxRacksPerShelf) {
+    return { ok: false, message: `${toShelf.name} is full (${FREEZER_LAYOUT_LIMITS.maxRacksPerShelf} racks max).` };
   }
-  const [rack] = shelf.racks.splice(from, 1);
-  shelf.racks.splice(toIndex, 0, rack!);
+
+  from.shelf.racks.splice(from.shelf.racks.indexOf(from.rack), 1);
+  toShelf.racks.splice(toIndex, 0, from.rack);
   return { ok: true };
 }
 

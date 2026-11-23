@@ -12,6 +12,7 @@ import {
   getExpandedRackId,
   getExpandedBoxId
 } from '../state/editorState.js';
+import { BulkFillPanel } from './BulkFillPanel.js';
 
 const DEFAULT_LAYOUT_COLOR = '#FFFFFF';
 
@@ -123,6 +124,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
           />
           <button id="btn-save" class="btn-save">Save</button>
           <button id="btn-delete" class="btn-delete">Delete</button>
+          <button id="btn-bulk-fill" class="btn-save">Bulk Fill</button>
         `}
         ${LayoutSearchButton(options.searchOpen)}
         <button id="btn-download" class="btn-download">Download</button>
@@ -135,6 +137,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
         <h2 id="freezer-title" tabindex="-1" class="${selected?.type === 'layout' ? 'layout-search-target' : ''}">${escapeHtml(layout.name)}</h2>
         <p>Front view — shelves are shown from top to bottom.</p>
         <div id="editor-message" class="editor-message" role="alert"></div>
+        ${!readOnly ? BulkFillPanel(layout) : ''}
         ${shelves.length > 0 ? `
           <button type="button" id="btn-expand-all-shelves" aria-controls="freezer-shelves" aria-expanded="${allShelvesExpanded}">
             ${allShelvesExpanded ? 'Collapse All Shelves' : 'Expand All Shelves'}

@@ -4,8 +4,8 @@ import { makeLayout } from '../helpers/questionSets.js';
 test('welcome panel fills the available viewport and keeps its content centered', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('banner').getByRole('heading', { level: 1, name: 'Freezer Tag', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Freezer Tag' })).toBeVisible();
+  await expect(page.getByRole('banner').getByRole('heading', { level: 1, name: 'Freeze Tag', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Freeze Tag' })).toBeVisible();
   await expect(page.getByText('Choose your role to get started.', { exact: true })).toBeVisible();
 
   const viewport = page.viewportSize();
