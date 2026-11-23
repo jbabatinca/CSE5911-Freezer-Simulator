@@ -60,6 +60,8 @@ import { searchLayouts } from '../services/LayoutSearchService.js';
 import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
 import { moveRack, moveBox, pasteShelf, pasteRack, pasteBox } from '../services/FreezerService.js';
 import { getClipboard, setClipboard } from '../state/editorState.js';
+import { planRackFill, applyRackFill, planBoxFill, applyBoxFill } from '../services/BulkFillService.js';   
+import { getBulkFill, setBulkFill, setBulkFillCell, clearBulkFillCells } from '../state/BulkFillState.js';
 
 function getRackIndexes(button: Element): { shelfIndex: number; rackIndex: number } {
     return {
@@ -1185,6 +1187,88 @@ export function App(): void {
             });
         });
 
+        // ===== BULK FILL =====
+        // Loads what's already in the chosen rack/box into the form, so occupied spots are visible.
+        function loadBulkFillCells(): void {
+            const layout = getCurrentEditingLayout();
+            const s = getBulkFill();
+            clearBulkFillCells();
+            if (!layout) return;
+            const rack = layout.freezerData.shelves[s.shelfIndex]?.racks[s.rackIndex];
+            if (!rack) return;
+            if (s.tab === 'rack') {
+                rack.boxSlots.forEach(slot => { if (slot.box) setBulkFillCell(slot.row, slot.column, slot.box.name); });
+            } else {
+                const box = rack.boxSlots.find(slot => slot.box?.id === s.boxId)?.box;
+                const names = new Map((layout.freezerData.samples ?? []).map(x => [x.id, x.name]));
+                box?.positions.forEach(p => { if (p.sampleId) setBulkFillCell(p.row, p.column, names.get(p.sampleId) ?? ''); });
+            }
+        }
+        function firstBoxId(): string | null {
+            const layout = getCurrentEditingLayout();
+            const s = getBulkFill();
+            return layout?.freezerData.shelves[s.shelfIndex]?.racks[s.rackIndex]?.boxSlots.find(x => x.box)?.box?.id ?? null;
+        }
+
+        document.getElementById('btn-bulk-fill')?.addEventListener('click', () => {
+            setBulkFill({ open: !getBulkFill().open });
+            loadBulkFillCells();
+            render();
+        });
+        document.getElementById('btn-bulk-close')?.addEventListener('click', () => { setBulkFill({ open: false }); render(); });
+        document.getElementById('btn-bulk-tab-rack')?.addEventListener('click', () => { setBulkFill({ tab: 'rack' }); loadBulkFillCells(); render(); });
+        document.getElementById('btn-bulk-tab-box')?.addEventListener('click', () => { setBulkFill({ tab: 'box', boxId: firstBoxId() }); loadBulkFillCells(); render(); });
+
+        document.getElementById('bulk-shelf')?.addEventListener('change', e => {
+            setBulkFill({ shelfIndex: Number((e.target as HTMLSelectElement).value), rackIndex: 0 });
+            setBulkFill({ boxId: firstBoxId() });
+            loadBulkFillCells(); render();
+        });
+        document.getElementById('bulk-rack')?.addEventListener('change', e => {
+            setBulkFill({ rackIndex: Number((e.target as HTMLSelectElement).value) });
+            setBulkFill({ boxId: firstBoxId() });
+            loadBulkFillCells(); render();
+        });
+        document.getElementById('bulk-box')?.addEventListener('change', e => {
+            setBulkFill({ boxId: (e.target as HTMLSelectElement).value });
+            loadBulkFillCells(); render();
+        });
+
+        // Save each keystroke into state. No render() here, or the input would lose focus.
+        document.querySelectorAll<HTMLInputElement>('.bulk-fill-cell').forEach(input => {
+            input.addEventListener('input', () => {
+                setBulkFillCell(Number(input.dataset.row), Number(input.dataset.column), input.value);
+            });
+        });
+
+        document.getElementById('btn-bulk-clear')?.addEventListener('click', () => { clearBulkFillCells(); render(); });
+
+        document.getElementById('btn-bulk-apply')?.addEventListener('click', () => {
+            const layout = getCurrentEditingLayout();
+            if (!layout) return;
+            const s = getBulkFill();
+            const cells = Object.entries(s.cells).map(([key, name]) => {
+                const [row, column] = key.split('-').map(Number);
+                return { row: row!, column: column!, name };
+            });
+
+            const plan = s.tab === 'rack'
+                ? planRackFill(layout, s.shelfIndex, s.rackIndex, cells)
+                : s.boxId ? planBoxFill(layout, s.boxId, cells) : null;
+            if (!plan) { alert('Choose a box first.'); return; }
+            if (!plan.add.length && !plan.update.length && !plan.remove.length) { alert('No changes to update.'); return; }
+
+            if (plan.duplicates.length && !confirm(`These names are used more than once: ${plan.duplicates.join(', ')}. Continue?`)) return;
+
+            if (s.tab === 'rack') applyRackFill(layout, s.shelfIndex, s.rackIndex, plan);
+            else applyBoxFill(layout, s.boxId!, plan);
+
+            layout.updatedAt = new Date().toISOString();
+            saveLayout(layout); // same as rename/assign handlers
+            loadBulkFillCells();
+            render();
+        });
+
         // ===== BOX BUTTONS =====
         // Add Box
         // Button id is "btn-add-box-<row>-<column>" (the empty slot's grid position).
@@ -1312,15 +1396,17 @@ export function App(): void {
             });
             rackEl.addEventListener('dragend', () => { dragging = null; rackEl.classList.remove('dragging'); });
             rackEl.addEventListener('dragover', e => {
-                if (dragging?.kind === 'rack' && dragging.shelfId === shelfId) {
+                if (dragging?.kind === 'rack') {
                     e.preventDefault();
+                    e.stopPropagation();
                     rackEl.classList.add('drop-target');
                 }
             });
             rackEl.addEventListener('dragleave', () => rackEl.classList.remove('drop-target'));
             rackEl.addEventListener('drop', e => {
-                if (dragging?.kind !== 'rack' || dragging.shelfId !== shelfId) return;
+                if (dragging?.kind !== 'rack') return;
                 e.preventDefault();
+                e.stopPropagation();
                 const layout = getCurrentEditingLayout();
                 if (!layout) return;
                 const { rackIndex } = getRackIndexes(rackEl);
@@ -1328,6 +1414,44 @@ export function App(): void {
                 finishEdit(moveRack(layout, shelfId, dragging.id, rackIndex), layout);
                 dragging = null;
             });
+        });
+
+        document.querySelectorAll<HTMLElement>('section[data-shelf-id]').forEach(shelfEl => {
+            const shelfId = shelfEl.dataset.shelfId!;
+            shelfEl.addEventListener('dragover', e => {
+                if (dragging?.kind !== 'rack') return;
+                e.preventDefault();
+                shelfEl.classList.add('drop-target');
+            });
+            shelfEl.addEventListener('dragleave', e => {
+                if (!shelfEl.contains(e.relatedTarget as Node)) shelfEl.classList.remove('drop-target');
+            });
+            shelfEl.addEventListener('drop', e => {
+                if (dragging?.kind !== 'rack') return;
+                e.preventDefault();
+                shelfEl.classList.remove('drop-target');
+                const layout = getCurrentEditingLayout();
+                const shelf = layout?.freezerData.shelves.find(s => s.id === shelfId);
+                if (!layout || !shelf) return;
+                const toIndex = dragging.shelfId === shelfId ? shelf.racks.length - 1 : shelf.racks.length;
+                finishEdit(moveRack(layout, shelfId, dragging.id, toIndex), layout);
+                dragging = null;
+            });
+        });
+
+        // Auto-scroll the page while dragging near the top/bottom edge of the window.
+        const editorEl = document.querySelector<HTMLElement>('.freezer-editor');
+        editorEl?.addEventListener('dragover', e => {
+            if (!dragging) return;                 // only for our rack/box drags
+            const EDGE = 80;                       // px from the edge where scrolling starts
+            const MAX_SPEED = 25;                  // px per dragover event at the very edge
+            const y = e.clientY;
+            const h = window.innerHeight;
+            if (y < EDGE) {
+                window.scrollBy(0, -Math.ceil(MAX_SPEED * (EDGE - y) / EDGE));
+            } else if (y > h - EDGE) {
+                window.scrollBy(0, Math.ceil(MAX_SPEED * (y - (h - EDGE)) / EDGE));
+            }
         });
 
         document.querySelectorAll<HTMLElement>('.box-container[data-box-id]').forEach(boxEl => {

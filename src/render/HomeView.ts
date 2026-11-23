@@ -9,8 +9,8 @@
 export function HomeView(): string {
     return `
     <div class="home-view">
-        <h1>Welcome to Freezer Tag</h1>
-        <p>Freezer Tag is a web-based training simulator for the College of Nursing. Lab managers can build virtual freezer layouts and create custom training exercises. Student workers and staff can practice navigating shelves, racks, and boxes to find sample locations before using the real freezer.</p>
+        <h1>Welcome to Freeze Tag</h1>
+        <p>Freeze Tag is a web-based training simulator for the College of Nursing. Lab managers can build virtual freezer layouts and create custom training exercises. Student workers and staff can practice navigating shelves, racks, and boxes to find sample locations before using the real freezer.</p>
         <p>Choose your role to get started.</p>
 
         <div class="home-buttons">

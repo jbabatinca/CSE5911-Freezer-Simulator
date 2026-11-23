@@ -2688,3 +2688,10 @@ button.layout-slot {
 .freezer-editor .drop-target { outline: 3px dashed var(--teal); outline-offset: 2px; }
 .editor-message:empty { display: none; }
 .editor-message { margin: 8px 0; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--teal); }
+
+.bulk-fill-panel { border: 2px solid var(--scarlet, #bb0000); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+.bulk-fill-tabs, .bulk-fill-targets, .bulk-fill-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.bulk-fill-grid { display: grid; gap: 4px; overflow-x: auto; }
+.bulk-fill-head { font-weight: 600; text-align: center; align-self: center; }
+.bulk-fill-cell { min-width: 7rem; padding: 4px; font-size: 0.85rem; }
+.bulk-fill-tabs [aria-pressed="true"] { font-weight: 700; text-decoration: underline; }
