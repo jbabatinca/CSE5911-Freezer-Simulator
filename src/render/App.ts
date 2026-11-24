@@ -33,6 +33,7 @@ import {
 import { advanceQuestionSetRun, refreshQuestionSetTimer, renderUserQuestionSetView, startQuestionSetRun, submitQuestionSetAnswer, toggleUserQuestionSetBox, toggleUserQuestionSetRack } from './QuestionSetRunView.js';
 import { Navigation } from './Navigation.js';
 import { AdminPasswordModal } from './AdminPasswordModal.js';
+import { AboutModal } from './AboutModal.js';
 import { AdminSettingsModal } from './AdminSettingsModal.js';
 import { openNewLayoutModal, closeNewLayoutModal } from '../state/configurationState.js';
 import { createNewEmptyLayout, getCurrentEditingLayout, setCurrentEditingLayout } from '../state/layoutState.js';
@@ -169,6 +170,7 @@ export function App(): void {
     let layoutSearchQuery = '';
     let selectedSearchKey: string | null = null;
     let layoutSearchOpen = false;
+    let showAboutModal = false;
 
     initializeAuth();
     render();
@@ -348,6 +350,10 @@ export function App(): void {
             html += AdminSettingsModal();
         }
 
+        if (showAboutModal && mode === 'home') {
+            html += AboutModal();
+        }
+
         app.innerHTML = html;
         attachEventListeners();
     }
@@ -457,6 +463,27 @@ export function App(): void {
                 render();
             });
         }
+
+        // About panel: open from the home-screen corner button; close via button, backdrop click, or Escape.
+        document.getElementById('btn-about')?.addEventListener('click', () => {
+            showAboutModal = true;
+            render();
+            document.getElementById('btn-close-about')?.focus();
+        });
+
+        const aboutOverlay = document.getElementById('about-modal-overlay');
+        const closeAbout = () => {
+            showAboutModal = false;
+            render();
+            document.getElementById('btn-about')?.focus();
+        };
+        document.getElementById('btn-close-about')?.addEventListener('click', closeAbout);
+        aboutOverlay?.addEventListener('click', event => {
+            if (event.target === aboutOverlay) closeAbout();
+        });
+        aboutOverlay?.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeAbout();
+        });
 
         if (btnBack) {
             btnBack.addEventListener('click', () => {
