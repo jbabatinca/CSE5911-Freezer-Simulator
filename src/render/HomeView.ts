@@ -21,6 +21,10 @@ export function HomeView(): string {
                 Student Worker
             </button>
         </div>
+        
+        <button id="btn-about" class="about-corner-button" aria-label="About Freeze Tag and its contributors">
+            About
+        </button>
     </div>
     `;
 }

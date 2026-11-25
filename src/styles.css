@@ -434,7 +434,72 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 16px 24px;
 }
 
-:is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
+/* Home-screen About button, pinned to the Welcome card's bottom-right corner. */
+.home-view {
+  position: relative;
+}
+
+.about-corner-button {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+}
+
+/* About panel: wider than the default modal and left-aligned. */
+.modal-content.about-modal {
+  width: min(100%, 600px);
+  text-align: left;
+}
+
+.about-intro {
+  margin: 0;
+  color: var(--muted);
+}
+
+.about-group h3 {
+  margin: 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--scarlet);
+  font-size: 18px;
+}
+
+.about-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-person {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+
+.about-person-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.about-person-name {
+  font-weight: 600;
+}
+
+.about-person-role {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.about-person p {
+  margin: 6px 0 0;
+  font-size: 15px;
+}
+
+:is(#btn-configuration, #btn-admin-mode, #btn-about, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
     #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
@@ -444,7 +509,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--action);
 }
 
-:is(#btn-configuration, #btn-admin-mode, #btn-admin-configuration,
+:is(#btn-configuration, #btn-admin-mode, #btn-about, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
     #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
@@ -673,7 +738,12 @@ button.layout-slot {
   body {
     padding: 12px;
   }
-
+  
+  .about-corner-button {
+    position: static;
+    margin-top: 24px;
+  }
+  
   .brand-banner {
     height: 56px;
   }
