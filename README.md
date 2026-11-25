@@ -11,6 +11,8 @@ Each virtual freezer can hold up to four shelves and six racks per shelf. A
 rack has a 4 × 4 grid of box slots. Each box has a 9 × 9 grid of sample
 positions labeled `A1` through `I9`.
 
+![Freeze Tag welcome screen with Lab Manager and Student Worker role choices](docs/screenshots/freeze-tag-welcome.png)
+
 ## Quick start
 
 Use Node.js 24 and npm. From the repository root, run the following commands.
@@ -23,6 +25,12 @@ npm start
 Open the local URL shown in the terminal, then choose
 **Student Worker → Tutorial Mode** to practice immediately with the built-in
 freezer. Press `Ctrl+C` to stop the server when you’re done.
+
+![Student Worker dashboard on first launch with Tutorial Mode ready to open](docs/screenshots/freeze-tag-quick-start.png)
+
+## App preview
+
+![Freeze Tag Tutorial Mode showing a sample-location question, color-coded racks, and an expanded 9 × 9 sample grid](docs/screenshots/freeze-tag-tutorial.png)
 
 ## Using Freeze Tag
 
@@ -43,6 +51,8 @@ freezer. Press `Ctrl+C` to stop the server when you’re done.
   score and misses or choose **Run set again**. Use **Change set** to return to
   the picker during or after a run.
 
+![Training Mode showing a custom question set with a countdown, question progress, and a practice rack selection](docs/screenshots/freeze-tag-training-mode.png)
+
 ### Progress History
 
 Both roles can review the browser’s latest 100 question-set attempts, including
@@ -50,12 +60,16 @@ completed runs and runs that ended after three misses or an expired timer. The
 history shows completion rate, best time per set, scores, and per-question
 times and misses. **Clear history** removes saved attempts after confirmation.
 
+![Progress History showing a completion rate, best time, and an expanded example attempt](docs/screenshots/freeze-tag-progress-history.png)
+
 ### Lab Manager
 
 Select **Lab Manager** and enter the password for the current browser. Use
 **Settings** on the Lab Manager home screen to change it and **Logout** to end
 the session. For a fresh local installation, see the default in the
 [authentication settings](src/state/authState.ts).
+
+![Lab Manager dashboard with Configuration Mode, Question Set Creator Mode, and Progress History](docs/screenshots/freeze-tag-lab-manager.png)
 
 #### Configure a freezer
 
@@ -79,6 +93,10 @@ or use **Delete** in the editor to remove it. To try an import, use the
   Choose the target, enter names, and select **Update**. Clearing an occupied
   cell removes its contents on update. Duplicate names prompt for confirmation.
 
+![Configuration Mode showing the layout editor, with one rack and its sample positions expanded](docs/screenshots/freeze-tag-layout-editor.png)
+
+![Bulk Fill panel showing the 4 × 4 grid for naming boxes in a rack](docs/screenshots/freeze-tag-bulk-fill.png)
+
 #### Create a timed question set
 
 1. Open **Question Set Creator Mode** and choose **Create question set**. Enter
@@ -91,12 +109,16 @@ or use **Delete** in the editor to remove it. To try an import, use the
    creator screen. To try a saved set, return to the welcome screen through
    **Home** and choose **Student Worker → Training Mode**.
 
+![Question Set Creator Mode showing an example set with a source freezer, time limit, and sample question](docs/screenshots/freeze-tag-question-set-creator.png)
+
 ## Export and share layouts
 
 Open a layout in either role and select **Download** for a reusable JSON file.
 To print it, select **Export to PDF**, choose **Current layout** or
 **One shelf per page**, then select **Save as PDF** in the browser print dialog.
 Freeze Tag remembers the last PDF layout choice.
+
+![Export to PDF dialog offering Current layout and One shelf per page](docs/screenshots/freeze-tag-pdf-export.png)
 
 ## Layout search
 
@@ -114,12 +136,16 @@ location.
 Close the panel or press `Esc` to hide it and preserve results. Select **Clear**
 or leave the layout to reset the search and highlighting.
 
+![Layout search showing matches for a training vial and its full location in each freezer](docs/screenshots/freeze-tag-layout-search.png)
+
 ## Application themes
 
 Use the sun or moon icon in the header to switch between light and dark mode.
 Light mode is the default, and you choose the theme independently of your
 device setting. The browser remembers your choice when storage is available.
 Switching themes preserves training progress and open racks and boxes.
+
+![Freeze Tag welcome screen in dark mode with the theme controls in the header](docs/screenshots/freeze-tag-dark-mode.png)
 
 ## Browser storage
 
@@ -129,6 +155,8 @@ Create and run a question set using the same browser profile and address. To
 move a layout to another browser, download its JSON and import it there. The
 layout file contains the freezer structure and samples. Question sets and
 attempt history stay in the original browser.
+
+![Layout View showing two saved freezers after reopening the app in the same browser](docs/screenshots/freeze-tag-saved-layouts.png)
 
 ## Development
 
