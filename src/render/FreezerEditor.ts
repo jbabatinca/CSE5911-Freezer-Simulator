@@ -138,11 +138,20 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
         <p>Front view — shelves are shown from top to bottom.</p>
         <div id="editor-message" class="editor-message" role="alert"></div>
         ${!readOnly ? BulkFillPanel(layout) : ''}
-        ${shelves.length > 0 ? `
-          <button type="button" id="btn-expand-all-shelves" aria-controls="freezer-shelves" aria-expanded="${allShelvesExpanded}">
-            ${allShelvesExpanded ? 'Collapse All Shelves' : 'Expand All Shelves'}
-          </button>
-        ` : ''}
+        <div class="shelves-toolbar">
+          ${shelves.length > 0 ? `
+            <button type="button" id="btn-expand-all-shelves" aria-controls="freezer-shelves" aria-expanded="${allShelvesExpanded}">
+              ${allShelvesExpanded ? 'Collapse All Shelves' : 'Expand All Shelves'}
+            </button>
+          ` : ''}
+          ${!readOnly ? `
+            <div class="clipboard-buttons">
+              <button id="btn-cut" class="btn-clipboard">Cut</button>
+              <button id="btn-copy" class="btn-clipboard">Copy</button>
+              <button id="btn-paste" class="btn-clipboard">Paste</button>
+            </div>
+          ` : ''}
+        </div>
         <section id="freezer-shelves" class="freezer" aria-labelledby="freezer-title">
           ${shelves.length === 0
             ? '<p>No shelves in this freezer.</p>'

@@ -205,19 +205,23 @@ export function App(): void {
         render();
     }
 
-    // Where the mouse currently is, stored as ids (not elements) because render() replaces the DOM.
-    let hover: { shelfId?: string; rackId?: string; row?: number; column?: number } = {};
-    document.addEventListener('mouseover', event => {
-        const el = event.target as HTMLElement;
+        // A shelf/rack/empty slot location, stored as ids (not elements) because render() replaces the DOM.
+    type Spot = { shelfId?: string; rackId?: string; row?: number; column?: number };
+    function spotOf(el: HTMLElement): Spot {
+        const shelfEl = el.closest<HTMLElement>('[data-shelf-id]');
+        const rackEl = el.closest<HTMLElement>('[data-rack-id]');
         const slotEl = el.closest<HTMLElement>('.box-slot.empty[data-row]');
-        hover = {
-            ...(el.closest<HTMLElement>('[data-shelf-id]') ? { shelfId: el.closest<HTMLElement>('[data-shelf-id]')!.dataset.shelfId! } : {}),
-            ...(el.closest<HTMLElement>('[data-rack-id]') ? { rackId: el.closest<HTMLElement>('[data-rack-id]')!.dataset.rackId! } : {}),
+        return {
+            ...(shelfEl ? { shelfId: shelfEl.dataset.shelfId! } : {}),
+            ...(rackEl ? { rackId: rackEl.dataset.rackId! } : {}),
             ...(slotEl ? { row: Number(slotEl.dataset.row), column: Number(slotEl.dataset.column) } : {})
         };
-    });
+    }
+    let hover: Spot = {};   // where the mouse is (used by Ctrl+V)
+    let tapped: Spot = {};  // where the user last clicked or tapped (used by the Paste button)
+    document.addEventListener('mouseover', event => { hover = spotOf(event.target as HTMLElement); });
 
-    function pasteFromClipboard(): void {
+    function pasteFromClipboard(at: Spot): void {
         const target = getCurrentEditingLayout();
         const clip = getClipboard();
         if (!target || !clip) return;
@@ -227,7 +231,7 @@ export function App(): void {
         if (!source) { showEditorMessage('The freezer you copied from no longer exists.'); return; }
 
         const expandedShelves = getExpandedShelfIds();
-        const shelfId = hover.shelfId ?? (expandedShelves.size === 1 ? expandedShelves.values().next().value : undefined);
+        const shelfId = at.shelfId ?? (expandedShelves.size === 1 ? expandedShelves.values().next().value : undefined);
         let result;
         if (clip.kind === 'shelf') {
             if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste onto. Create one first with + Add Shelf.'); return; }
@@ -238,9 +242,9 @@ export function App(): void {
             if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste into.'); return; }
             result = pasteRack(source, target, shelfId, clip.id, clip.mode);
         } else {
-            const rackId = hover.rackId ?? getExpandedRackId();
+            const rackId = at.rackId ?? getExpandedRackId();
             if (!rackId) { showEditorMessage('Hover over the rack you want to paste into.'); return; }
-            result = pasteBox(source, target, rackId, clip.id, clip.mode, hover.row, hover.column);
+            result = pasteBox(source, target, rackId, clip.id, clip.mode, at.row, at.column);
         }
 
         if (result.ok) {
@@ -258,14 +262,25 @@ export function App(): void {
     let selectedItem: { kind: 'shelf' | 'rack' | 'box'; id: string } | null = null;
     document.addEventListener('click', event => {
         const el = event.target as HTMLElement;
-        if (el.closest('input, textarea, select, .btn-remove, .btn-remove-box')) return;
-        const boxEl = el.closest<HTMLElement>('[data-box-id]');
+        if (el.closest('input, textarea, select, .btn-remove, .btn-remove-box, .btn-clipboard')) return;        const boxEl = el.closest<HTMLElement>('[data-box-id]');
+        tapped = spotOf(el);
         const rackEl = el.closest<HTMLElement>('[data-rack-id]');
         const shelfEl = el.closest<HTMLElement>('[data-shelf-id]');
         selectedItem = boxEl ? { kind: 'box', id: boxEl.dataset.boxId! }
                      : rackEl ? { kind: 'rack', id: rackEl.dataset.rackId! }
                      : shelfEl ? { kind: 'shelf', id: shelfEl.dataset.shelfId! } : null;
     }, true);
+
+    function cutOrCopy(mode: 'cut' | 'copy'): void {
+        const layoutId = getCurrentEditingLayout()?.id;
+        const target = selectedItem;
+        if (!target || !layoutId) { showEditorMessage('Click or tap a box, rack or shelf first.'); return; }
+        setClipboard({ ...target, mode, layoutId });
+        const verb = mode === 'cut' ? 'Cut' : 'Copied';
+        showEditorMessage(target.kind === 'shelf'
+            ? `${verb} shelf contents. Select another shelf, then press Paste (or Ctrl+V).`
+            : `${verb} ${target.kind}. Select where it should go, then press Paste (or Ctrl+V).`);
+    }
 
     document.addEventListener('keydown', event => {
         if (!(event.ctrlKey || event.metaKey)) return;
@@ -278,21 +293,14 @@ export function App(): void {
         if (key === 'v') {
             if (!getClipboard()) return;
             event.preventDefault();
-            pasteFromClipboard();
+            pasteFromClipboard(hover);
             return;
         }
 
         // Cut/copy act on the last clicked box, else rack, else shelf.
-        const layoutId = getCurrentEditingLayout()?.id;
-        const target = selectedItem;
-        if (!target || !layoutId) return;
+        if (!selectedItem || !getCurrentEditingLayout()) return;
         event.preventDefault();
-        setClipboard({ ...target, mode: key === 'x' ? 'cut' : 'copy', layoutId });
-        showEditorMessage(
-            target.kind === 'shelf'
-                ? `${key === 'x' ? 'Cut' : 'Copied'} shelf contents. Hover over another shelf and press Ctrl+V to paste onto it.`
-                : `${key === 'x' ? 'Cut' : 'Copied'} ${target.kind}. Expand the destination and press Ctrl+V.`
-        );
+        cutOrCopy(key === 'x' ? 'cut' : 'copy');
     });
 
     // Rebuilds the entire page HTML for the current mode and re-attaches listeners.
@@ -957,6 +965,13 @@ export function App(): void {
 
         // Configuration mode - Save button in FreezerEditor
         // Saves the layout being edited to localStorage via StorageService (falls back to "Unnamed Layout" if the name is blank).
+        // Cut/Copy/Paste buttons, so the clipboard also works on touch devices without a keyboard.
+        document.getElementById('btn-cut')?.addEventListener('click', () => cutOrCopy('cut'));
+        document.getElementById('btn-copy')?.addEventListener('click', () => cutOrCopy('copy'));
+        document.getElementById('btn-paste')?.addEventListener('click', () => {
+            if (!getClipboard()) { showEditorMessage('Nothing to paste yet. Cut or copy something first.'); return; }
+            pasteFromClipboard(tapped);
+        });
         const btnSave = document.getElementById('btn-save');
         if (btnSave) {
             btnSave.addEventListener('click', () => {
