@@ -329,7 +329,7 @@ function renderBox(box: TutorialBox, rack: TutorialRack): string {
     }
 
     const isExpanded = expandedBoxId === box.id;
-    return `<button type="button" class="tutorial-box-toggle${isExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-toggle-box="${escapeHtml(box.id)}" aria-expanded="${isExpanded}">${isExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>`;
+    return `<button type="button" class="tutorial-box-toggle${isExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-training-toggle-box="${escapeHtml(box.id)}" aria-expanded="${isExpanded}">${isExpanded ? '▾' : '▸'} ${escapeHtml(box.name)}</button>`;
 }
 
 /** Takes a practice rack and returns its answer-button or expandable contents HTML for the current level. */
@@ -356,7 +356,7 @@ function renderRack(rack: TutorialRack): string {
         <li class="tutorial-rack${isExpanded ? ' is-expanded' : ''}" style="--tutorial-rack-color: ${isHexColor(rack.color) ? rack.color : '#FFFFFF'}">
             <button type="button" class="tutorial-rack-toggle" data-training-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${isExpanded}">
                 <span class="tutorial-color-key" aria-hidden="true"></span>
-                <span>${isExpanded ? '▼' : '▶'} ${escapeHtml(rack.name)}</span>
+                <span>${isExpanded ? '▾' : '▸'} ${escapeHtml(rack.name)}</span>
             </button>
             <p class="question-set-rack-capacity">${rack.boxes.length} / ${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes filled</p>
             ${contents}

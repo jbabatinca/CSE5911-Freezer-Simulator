@@ -163,10 +163,10 @@ test('navigation, history, and freezer controls match the configuration button i
     await expect(shelf).toHaveCSS('border-bottom-width', '5px');
     await expect(shelf).toHaveCSS('border-top-width', '1px');
     await expect(shelf).toHaveCSS('border-radius', '8px');
-    await expect(shelfToggle).toHaveText('▶');
+    await expect(shelfToggle).toHaveText('▸');
     await expectScarletButton('.btn-toggle-shelf');
     await shelfToggle.press('Enter');
-    await expect(shelfToggle).toHaveText('▼');
+    await expect(shelfToggle).toHaveText('▾');
     await expectScarletButton('.btn-toggle-shelf');
     await shelfToggle.press('Enter');
 

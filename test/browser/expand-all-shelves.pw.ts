@@ -87,7 +87,7 @@ test('edits racks and boxes on the selected shelf with all shelves open', async 
   const addBox = bottomRack.getByRole('button', { name: 'Add box at row 1, column 2' });
   await addBox.click();
   await page.getByRole('button', { name: 'Create box' }).click();
-  await expect(bottomRack.getByRole('button', { name: /^▶ Box 1-2 \(/ })).toBeVisible();
+  await expect(bottomRack.getByRole('button', { name: /^▸ Box 1-2 \(/ })).toBeVisible();
   page.once('dialog', dialog => dialog.accept());
   await bottomRack.locator('#btn-remove-box-1-2').click();
   await expect(addBox).toBeVisible();
