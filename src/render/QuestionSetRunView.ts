@@ -343,7 +343,7 @@ function renderRack(layout: SavedLayout, rack: FreezerRack, question: QuestionSe
         <li class="tutorial-rack${rackExpanded ? ' is-expanded' : ''}" style="--tutorial-rack-color: ${rackColor}">
             ${question.targetType === 'rack'
                 ? `<button type="button" ${answerAttributes('tutorial-rack-target', rack.id, question)}><span class="tutorial-color-key" aria-hidden="true"></span><span>${escapeHtml(rack.name)}</span></button>`
-                : `<button type="button" class="tutorial-rack-toggle" data-question-set-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${rackExpanded}"><span class="tutorial-color-key" aria-hidden="true"></span><span>${rackExpanded ? '▼' : '▶'} ${escapeHtml(rack.name)}</span></button>`}
+                : `<button type="button" class="tutorial-rack-toggle" data-question-set-toggle-rack="${escapeHtml(rack.id)}" aria-expanded="${rackExpanded}"><span class="tutorial-color-key" aria-hidden="true"></span><span>${rackExpanded ? '▾' : '▸'} ${escapeHtml(rack.name)}</span></button>`}
             <p class="question-set-rack-capacity">${rack.boxSlots.filter(slot => slot.box).length} / ${FREEZER_LAYOUT_LIMITS.maxBoxSlotsPerRack} boxes filled</p>
             ${contents}
         </li>
@@ -383,7 +383,7 @@ function renderBox(box: FreezerBox, rackColor: string, question: QuestionSetQues
 
     const boxExpanded = expandedBoxId === box.id;
     return `
-        <button type="button" class="tutorial-box-toggle${boxExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-question-set-toggle-box="${escapeHtml(box.id)}" aria-expanded="${boxExpanded}">${boxExpanded ? '▼' : '▶'} ${escapeHtml(box.name)}</button>
+        <button type="button" class="tutorial-box-toggle${boxExpanded ? ' is-expanded' : ''}" style="--tutorial-box-color: ${boxColor}; --tutorial-box-foreground: ${boxForeground}" data-question-set-toggle-box="${escapeHtml(box.id)}" aria-expanded="${boxExpanded}">${boxExpanded ? '▾' : '▸'} ${escapeHtml(box.name)}</button>
     `;
 }
 

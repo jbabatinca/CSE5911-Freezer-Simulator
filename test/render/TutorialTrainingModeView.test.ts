@@ -52,8 +52,8 @@ describe('TutorialTrainingModeView - question bank', () => {
       expect(target).not.toBeNull();
       if (question.type === 'sample') {
         const rack = target?.closest('.tutorial-rack');
-        const rackName = rack?.querySelector('.tutorial-rack-toggle span:last-child')?.textContent?.replace(/^[▼▶]\s*/, '');
-        const boxName = rack?.querySelector(`[data-training-toggle-box="tutorial-box-${shelfNumber}-${rackNumber}-${boxNumber}"]`)?.textContent?.replace(/^[▼▶]\s*/, '');
+        const rackName = rack?.querySelector('.tutorial-rack-toggle span:last-child')?.textContent?.replace(/^[▾▸]\s*/, '');
+        const boxName = rack?.querySelector(`[data-training-toggle-box="tutorial-box-${shelfNumber}-${rackNumber}-${boxNumber}"]`)?.textContent?.replace(/^[▾▸]\s*/, '');
         expect(root.querySelector('#training-question-panel h2')?.textContent).toBe(`Find Shelf ${shelfNumber} / ${rackName} / ${boxName} / ${target?.textContent}`);
       }
       answerTrainingTarget(question.targetId);

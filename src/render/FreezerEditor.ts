@@ -152,7 +152,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
                   <section id="shelf-${escapeHtml(shelf.id)}" data-shelf-id="${escapeHtml(shelf.id)}" data-shelf-index="${shelfIdx}" tabindex="-1" class="shelf${selected?.shelfId === shelf.id ? ' layout-search-ancestor' : ''}${selected?.type === 'shelf' && selected.shelfId === shelf.id ? ' layout-search-target' : ''}" aria-label="${escapeHtml(shelf.name)}">
                     <div class="shelf-header">
                       <button type="button" id="btn-toggle-shelf-${escapeHtml(shelf.id)}" class="btn-toggle btn-toggle-shelf" aria-label="Toggle ${escapeHtml(shelf.name)}" aria-expanded="${isExpanded}">
-                        ${isExpanded ? '▼' : '▶'}
+                        ${isExpanded ? '▾' : '▸'}
                       </button>
                       <h3>${shelf.name}</h3>
                       ${!readOnly && shelves.length < FREEZER_LAYOUT_LIMITS.maxShelvesPerFreezer ? `<button id="btn-remove-shelf-${shelfIdx}" class="btn-remove">Remove Shelf</button>` : ''}
@@ -171,7 +171,7 @@ export function FreezerEditor(layout: SavedLayout, readOnly: boolean = false, op
                                 <li ${!readOnly ? `draggable="true" data-rack-id="${escapeHtml(rack.id)}"` : ''} tabindex="-1" data-rack-index="${rackIdx}" class="rack color-coded${rackExpanded ? ' rack-expanded' : ''}${selected?.rackId === rack.id ? ' layout-search-ancestor' : ''}${selected?.type === 'rack' && selected.rackId === rack.id ? ' layout-search-target' : ''}" id="rack-${escapeHtml(rack.id)}" aria-label="${escapeHtml(rack.name)}" style="--item-color: ${rackColor}; --item-foreground: ${getReadableTextColor(rackColor)}">
                                   <div class="rack-info">
                                     <button id="btn-toggle-rack-${rack.id}" class="btn-toggle">
-                                      ${rackExpanded ? '▼' : '▶'}
+                                      ${rackExpanded ? '▾' : '▸'}
                                     </button>
                                     <h4>${rack.name}</h4>
                                     ${!readOnly ? `<button id="btn-rename-rack-${rack.id}" class="btn-rename-item" aria-label="Rename ${escapeHtml(rack.name)}">Rename</button>` : ''}
@@ -219,7 +219,7 @@ function renderBoxGrid(rack: FreezerRack, expandedBoxId: string | null, readOnly
       html += `
         <div id="box-${escapeHtml(slot.box!.id)}" ${!readOnly ? `draggable="true" data-box-id="${escapeHtml(slot.box!.id)}"` : ''} data-row="${slot.row}" data-column="${slot.column}" tabindex="-1" aria-label="${escapeHtml(slot.box!.name)}" class="box-container color-coded${boxExpanded ? ' box-selected' : ''}${selectedBoxId === slot.box!.id ? ' layout-search-ancestor' : ''}${highlightBox && selectedBoxId === slot.box!.id ? ' layout-search-target' : ''}" style="position: relative; --item-color: ${boxColor}; --item-foreground: ${getReadableTextColor(boxColor)}">
           <button id="btn-toggle-box-${slot.box!.id}" class="btn-toggle box-toggle" aria-expanded="${boxExpanded}">
-            ${boxExpanded ? '▼' : '▶'} ${slot.box!.name} (${slot.box!.positions.filter(p => p.sampleId).length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
+            ${boxExpanded ? '▾' : '▸'} ${slot.box!.name} (${slot.box!.positions.filter(p => p.sampleId).length}/${FREEZER_LAYOUT_LIMITS.maxPositionsPerBox})
           </button>
           ${!readOnly ? `<button id="btn-rename-box-${slot.box!.id}" class="btn-rename-box" aria-label="Rename ${escapeHtml(slot.box!.name)}">Rename</button>` : ''}
           ${!readOnly ? renderColorPicker('box', slot.box!.id, slot.box!.name, boxColor, boxInheritsRackColor) : ''}
