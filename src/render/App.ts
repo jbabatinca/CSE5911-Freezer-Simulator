@@ -61,8 +61,9 @@ import { searchLayouts } from '../services/LayoutSearchService.js';
 import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
 import { moveRack, moveBox, pasteShelf, pasteRack, pasteBox } from '../services/FreezerService.js';
 import { getClipboard, setClipboard } from '../state/editorState.js';
-import { planRackFill, applyRackFill, planBoxFill, applyBoxFill } from '../services/BulkFillService.js';   
+import { planRackFill, applyRackFill, planBoxFill, applyBoxFill, currentNames } from '../services/BulkFillService.js';   
 import { getBulkFill, setBulkFill, setBulkFillCell, clearBulkFillCells } from '../state/BulkFillState.js';
+import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
 
 function getRackIndexes(button: Element): { shelfIndex: number; rackIndex: number } {
     return {
@@ -204,19 +205,23 @@ export function App(): void {
         render();
     }
 
-    // Where the mouse currently is, stored as ids (not elements) because render() replaces the DOM.
-    let hover: { shelfId?: string; rackId?: string; row?: number; column?: number } = {};
-    document.addEventListener('mouseover', event => {
-        const el = event.target as HTMLElement;
+        // A shelf/rack/empty slot location, stored as ids (not elements) because render() replaces the DOM.
+    type Spot = { shelfId?: string; rackId?: string; row?: number; column?: number };
+    function spotOf(el: HTMLElement): Spot {
+        const shelfEl = el.closest<HTMLElement>('[data-shelf-id]');
+        const rackEl = el.closest<HTMLElement>('[data-rack-id]');
         const slotEl = el.closest<HTMLElement>('.box-slot.empty[data-row]');
-        hover = {
-            ...(el.closest<HTMLElement>('[data-shelf-id]') ? { shelfId: el.closest<HTMLElement>('[data-shelf-id]')!.dataset.shelfId! } : {}),
-            ...(el.closest<HTMLElement>('[data-rack-id]') ? { rackId: el.closest<HTMLElement>('[data-rack-id]')!.dataset.rackId! } : {}),
+        return {
+            ...(shelfEl ? { shelfId: shelfEl.dataset.shelfId! } : {}),
+            ...(rackEl ? { rackId: rackEl.dataset.rackId! } : {}),
             ...(slotEl ? { row: Number(slotEl.dataset.row), column: Number(slotEl.dataset.column) } : {})
         };
-    });
+    }
+    let hover: Spot = {};   // where the mouse is (used by Ctrl+V)
+    let tapped: Spot = {};  // where the user last clicked or tapped (used by the Paste button)
+    document.addEventListener('mouseover', event => { hover = spotOf(event.target as HTMLElement); });
 
-    function pasteFromClipboard(): void {
+    function pasteFromClipboard(at: Spot): void {
         const target = getCurrentEditingLayout();
         const clip = getClipboard();
         if (!target || !clip) return;
@@ -226,7 +231,7 @@ export function App(): void {
         if (!source) { showEditorMessage('The freezer you copied from no longer exists.'); return; }
 
         const expandedShelves = getExpandedShelfIds();
-        const shelfId = hover.shelfId ?? (expandedShelves.size === 1 ? expandedShelves.values().next().value : undefined);
+        const shelfId = at.shelfId ?? (expandedShelves.size === 1 ? expandedShelves.values().next().value : undefined);
         let result;
         if (clip.kind === 'shelf') {
             if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste onto. Create one first with + Add Shelf.'); return; }
@@ -237,9 +242,9 @@ export function App(): void {
             if (!shelfId) { showEditorMessage('Hover over the shelf you want to paste into.'); return; }
             result = pasteRack(source, target, shelfId, clip.id, clip.mode);
         } else {
-            const rackId = hover.rackId ?? getExpandedRackId();
+            const rackId = at.rackId ?? getExpandedRackId();
             if (!rackId) { showEditorMessage('Hover over the rack you want to paste into.'); return; }
-            result = pasteBox(source, target, rackId, clip.id, clip.mode, hover.row, hover.column);
+            result = pasteBox(source, target, rackId, clip.id, clip.mode, at.row, at.column);
         }
 
         if (result.ok) {
@@ -257,14 +262,25 @@ export function App(): void {
     let selectedItem: { kind: 'shelf' | 'rack' | 'box'; id: string } | null = null;
     document.addEventListener('click', event => {
         const el = event.target as HTMLElement;
-        if (el.closest('input, textarea, select, .btn-remove, .btn-remove-box')) return;
-        const boxEl = el.closest<HTMLElement>('[data-box-id]');
+        if (el.closest('input, textarea, select, .btn-remove, .btn-remove-box, .btn-clipboard')) return;        const boxEl = el.closest<HTMLElement>('[data-box-id]');
+        tapped = spotOf(el);
         const rackEl = el.closest<HTMLElement>('[data-rack-id]');
         const shelfEl = el.closest<HTMLElement>('[data-shelf-id]');
         selectedItem = boxEl ? { kind: 'box', id: boxEl.dataset.boxId! }
                      : rackEl ? { kind: 'rack', id: rackEl.dataset.rackId! }
                      : shelfEl ? { kind: 'shelf', id: shelfEl.dataset.shelfId! } : null;
     }, true);
+
+    function cutOrCopy(mode: 'cut' | 'copy'): void {
+        const layoutId = getCurrentEditingLayout()?.id;
+        const target = selectedItem;
+        if (!target || !layoutId) { showEditorMessage('Click or tap a box, rack or shelf first.'); return; }
+        setClipboard({ ...target, mode, layoutId });
+        const verb = mode === 'cut' ? 'Cut' : 'Copied';
+        showEditorMessage(target.kind === 'shelf'
+            ? `${verb} shelf contents. Select another shelf, then press Paste (or Ctrl+V).`
+            : `${verb} ${target.kind}. Select where it should go, then press Paste (or Ctrl+V).`);
+    }
 
     document.addEventListener('keydown', event => {
         if (!(event.ctrlKey || event.metaKey)) return;
@@ -277,21 +293,14 @@ export function App(): void {
         if (key === 'v') {
             if (!getClipboard()) return;
             event.preventDefault();
-            pasteFromClipboard();
+            pasteFromClipboard(hover);
             return;
         }
 
         // Cut/copy act on the last clicked box, else rack, else shelf.
-        const layoutId = getCurrentEditingLayout()?.id;
-        const target = selectedItem;
-        if (!target || !layoutId) return;
+        if (!selectedItem || !getCurrentEditingLayout()) return;
         event.preventDefault();
-        setClipboard({ ...target, mode: key === 'x' ? 'cut' : 'copy', layoutId });
-        showEditorMessage(
-            target.kind === 'shelf'
-                ? `${key === 'x' ? 'Cut' : 'Copied'} shelf contents. Hover over another shelf and press Ctrl+V to paste onto it.`
-                : `${key === 'x' ? 'Cut' : 'Copied'} ${target.kind}. Expand the destination and press Ctrl+V.`
-        );
+        cutOrCopy(key === 'x' ? 'cut' : 'copy');
     });
 
     // Rebuilds the entire page HTML for the current mode and re-attaches listeners.
@@ -956,6 +965,13 @@ export function App(): void {
 
         // Configuration mode - Save button in FreezerEditor
         // Saves the layout being edited to localStorage via StorageService (falls back to "Unnamed Layout" if the name is blank).
+        // Cut/Copy/Paste buttons, so the clipboard also works on touch devices without a keyboard.
+        document.getElementById('btn-cut')?.addEventListener('click', () => cutOrCopy('cut'));
+        document.getElementById('btn-copy')?.addEventListener('click', () => cutOrCopy('copy'));
+        document.getElementById('btn-paste')?.addEventListener('click', () => {
+            if (!getClipboard()) { showEditorMessage('Nothing to paste yet. Cut or copy something first.'); return; }
+            pasteFromClipboard(tapped);
+        });
         const btnSave = document.getElementById('btn-save');
         if (btnSave) {
             btnSave.addEventListener('click', () => {
@@ -1216,21 +1232,8 @@ export function App(): void {
 
         // ===== BULK FILL =====
         // Loads what's already in the chosen rack/box into the form, so occupied spots are visible.
-        function loadBulkFillCells(): void {
-            const layout = getCurrentEditingLayout();
-            const s = getBulkFill();
-            clearBulkFillCells();
-            if (!layout) return;
-            const rack = layout.freezerData.shelves[s.shelfIndex]?.racks[s.rackIndex];
-            if (!rack) return;
-            if (s.tab === 'rack') {
-                rack.boxSlots.forEach(slot => { if (slot.box) setBulkFillCell(slot.row, slot.column, slot.box.name); });
-            } else {
-                const box = rack.boxSlots.find(slot => slot.box?.id === s.boxId)?.box;
-                const names = new Map((layout.freezerData.samples ?? []).map(x => [x.id, x.name]));
-                box?.positions.forEach(p => { if (p.sampleId) setBulkFillCell(p.row, p.column, names.get(p.sampleId) ?? ''); });
-            }
-        }
+        function loadBulkFillCells(): void { clearBulkFillCells(); }
+
         function firstBoxId(): string | null {
             const layout = getCurrentEditingLayout();
             const s = getBulkFill();
@@ -1268,13 +1271,20 @@ export function App(): void {
             });
         });
 
-        document.getElementById('btn-bulk-clear')?.addEventListener('click', () => { clearBulkFillCells(); render(); });
+        document.getElementById('btn-bulk-clear')?.addEventListener('click', () => {
+            const s = getBulkFill();
+            const rows = s.tab === 'rack' ? FREEZER_LAYOUT_LIMITS.rackRows : FREEZER_LAYOUT_LIMITS.boxRows;
+            const cols = s.tab === 'rack' ? FREEZER_LAYOUT_LIMITS.rackColumns : FREEZER_LAYOUT_LIMITS.boxColumns;
+            for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) setBulkFillCell(r, c, '');
+            render();
+        });
 
         document.getElementById('btn-bulk-apply')?.addEventListener('click', () => {
             const layout = getCurrentEditingLayout();
             if (!layout) return;
             const s = getBulkFill();
-            const cells = Object.entries(s.cells).map(([key, name]) => {
+            const merged = { ...currentNames(layout, s.tab, s.shelfIndex, s.rackIndex, s.boxId), ...s.cells };
+            const cells = Object.entries(merged).map(([key, name]) => {
                 const [row, column] = key.split('-').map(Number);
                 return { row: row!, column: column!, name };
             });

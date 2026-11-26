@@ -502,8 +502,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 :is(#btn-configuration, #btn-admin-mode, #btn-about, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
-    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
-    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf) {
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves, .btn-clipboard,    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf) {
   border-color: var(--action);
   color: #fff;
   background: var(--action);
@@ -512,8 +511,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 :is(#btn-configuration, #btn-admin-mode, #btn-about, #btn-admin-configuration,
     #btn-freezer-layouts, #btn-admin-login, #btn-change-password,
     .btn-save, #btn-create-new, #btn-home, #btn-admin-settings, #btn-logout,
-    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves,
-    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf):hover {
+    #btn-user-history, #btn-back, .btn-back, #btn-open-question-set, #btn-expand-all-shelves, .btn-clipboard,    .layout-search-toggle, #btn-download, #btn-export-pdf, .btn-toggle-shelf):hover {
   border-color: var(--action-hover);
   background: var(--action-hover);
 }
@@ -673,8 +671,18 @@ button.layout-slot {
 }
 
 /* Freezer, shelf, and horizontally scrolling rack layout. */
-#btn-expand-all-shelves {
+.shelves-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.clipboard-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;   /* pushes Cut/Copy/Paste to the right corner */
 }
 
 .freezer {
@@ -2756,6 +2764,12 @@ button.layout-slot {
 .freezer-editor [draggable="true"] { cursor: grab; }
 .freezer-editor .dragging { opacity: 0.4; }
 .freezer-editor .drop-target { outline: 3px dashed var(--teal); outline-offset: 2px; }
+.freezer-editor [draggable="true"] {
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 .editor-message:empty { display: none; }
 .editor-message { margin: 8px 0; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--teal); }
 

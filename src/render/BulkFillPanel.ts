@@ -1,6 +1,6 @@
 import type { SavedLayout } from '../models/SavedLayout.js';
 import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
-import { positionLabel } from '../services/BulkFillService.js';
+import { positionLabel, currentNames } from '../services/BulkFillService.js';
 import { getBulkFill } from '../state/BulkFillState.js';
 
 function escapeHtml(value: string): string {
@@ -22,12 +22,14 @@ export function BulkFillPanel(layout: SavedLayout): string {
   const option = (value: string | number, label: string, selected: boolean) =>
     `<option value="${value}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
 
+  const current = currentNames(layout, s.tab, s.shelfIndex, s.rackIndex, s.boxId);
+
   let grid = `<div class="bulk-fill-grid" style="grid-template-columns: 2rem repeat(${cols}, 1fr)"><span></span>`;
   for (let c = 1; c <= cols; c++) grid += `<span class="bulk-fill-head">${c}</span>`;
   for (let r = 1; r <= rows; r++) {
     grid += `<span class="bulk-fill-head">${String.fromCharCode(64 + r)}</span>`;
     for (let c = 1; c <= cols; c++) {
-      const value = s.cells[`${r}-${c}`] ?? '';
+      const value = s.cells[`${r}-${c}`] ?? current[`${r}-${c}`] ?? '';
       grid += `<input class="bulk-fill-cell" data-row="${r}" data-column="${c}"
                  aria-label="${positionLabel(r, c)}" placeholder="${positionLabel(r, c)}"
                  value="${escapeHtml(value)}">`;

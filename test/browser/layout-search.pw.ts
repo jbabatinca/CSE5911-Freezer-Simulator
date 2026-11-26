@@ -153,6 +153,13 @@ for (const role of ['user', 'admin'] as const) {
       await page.getByRole('button', { name: 'Export to PDF', exact: true }).focus();
       await page.keyboard.press('Tab');
       await expect(page.getByRole('button', { name: 'Expand All Shelves' })).toBeFocused();
+      if (role === 'admin') {
+        // The editable editor has Cut/Copy/Paste buttons after Expand All Shelves.
+        for (const name of ['Cut', 'Copy', 'Paste']) {
+          await page.keyboard.press('Tab');
+          await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
+        }
+      }
       await page.keyboard.press('Tab');
       await expect(page.locator('#btn-toggle-shelf-layout-1-shelf')).toBeFocused();
       await toggle.focus();
