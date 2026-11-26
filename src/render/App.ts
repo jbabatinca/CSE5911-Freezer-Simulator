@@ -61,8 +61,9 @@ import { searchLayouts } from '../services/LayoutSearchService.js';
 import { getExportLayoutPreference, setExportLayoutPreference } from '../state/exportState.js';
 import { moveRack, moveBox, pasteShelf, pasteRack, pasteBox } from '../services/FreezerService.js';
 import { getClipboard, setClipboard } from '../state/editorState.js';
-import { planRackFill, applyRackFill, planBoxFill, applyBoxFill } from '../services/BulkFillService.js';   
+import { planRackFill, applyRackFill, planBoxFill, applyBoxFill, currentNames } from '../services/BulkFillService.js';   
 import { getBulkFill, setBulkFill, setBulkFillCell, clearBulkFillCells } from '../state/BulkFillState.js';
+import { FREEZER_LAYOUT_LIMITS } from '../models/freezerLayout.js';
 
 function getRackIndexes(button: Element): { shelfIndex: number; rackIndex: number } {
     return {
@@ -1216,21 +1217,8 @@ export function App(): void {
 
         // ===== BULK FILL =====
         // Loads what's already in the chosen rack/box into the form, so occupied spots are visible.
-        function loadBulkFillCells(): void {
-            const layout = getCurrentEditingLayout();
-            const s = getBulkFill();
-            clearBulkFillCells();
-            if (!layout) return;
-            const rack = layout.freezerData.shelves[s.shelfIndex]?.racks[s.rackIndex];
-            if (!rack) return;
-            if (s.tab === 'rack') {
-                rack.boxSlots.forEach(slot => { if (slot.box) setBulkFillCell(slot.row, slot.column, slot.box.name); });
-            } else {
-                const box = rack.boxSlots.find(slot => slot.box?.id === s.boxId)?.box;
-                const names = new Map((layout.freezerData.samples ?? []).map(x => [x.id, x.name]));
-                box?.positions.forEach(p => { if (p.sampleId) setBulkFillCell(p.row, p.column, names.get(p.sampleId) ?? ''); });
-            }
-        }
+        function loadBulkFillCells(): void { clearBulkFillCells(); }
+
         function firstBoxId(): string | null {
             const layout = getCurrentEditingLayout();
             const s = getBulkFill();
@@ -1268,13 +1256,20 @@ export function App(): void {
             });
         });
 
-        document.getElementById('btn-bulk-clear')?.addEventListener('click', () => { clearBulkFillCells(); render(); });
+        document.getElementById('btn-bulk-clear')?.addEventListener('click', () => {
+            const s = getBulkFill();
+            const rows = s.tab === 'rack' ? FREEZER_LAYOUT_LIMITS.rackRows : FREEZER_LAYOUT_LIMITS.boxRows;
+            const cols = s.tab === 'rack' ? FREEZER_LAYOUT_LIMITS.rackColumns : FREEZER_LAYOUT_LIMITS.boxColumns;
+            for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) setBulkFillCell(r, c, '');
+            render();
+        });
 
         document.getElementById('btn-bulk-apply')?.addEventListener('click', () => {
             const layout = getCurrentEditingLayout();
             if (!layout) return;
             const s = getBulkFill();
-            const cells = Object.entries(s.cells).map(([key, name]) => {
+            const merged = { ...currentNames(layout, s.tab, s.shelfIndex, s.rackIndex, s.boxId), ...s.cells };
+            const cells = Object.entries(merged).map(([key, name]) => {
                 const [row, column] = key.split('-').map(Number);
                 return { row: row!, column: column!, name };
             });

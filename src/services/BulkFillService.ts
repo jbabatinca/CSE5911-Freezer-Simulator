@@ -22,6 +22,22 @@ export function positionLabel(row: number, column: number): string {
   return String.fromCharCode(64 + row) + column;
 }
 
+/** What the chosen rack/box holds right now, as "row-column" -> name. */
+export function currentNames(layout: SavedLayout, tab: 'rack' | 'box', shelfIndex: number,
+                             rackIndex: number, boxId: string | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  const rack = layout.freezerData.shelves[shelfIndex]?.racks[rackIndex];
+  if (!rack) return out;
+  if (tab === 'rack') {
+    rack.boxSlots.forEach(s => { if (s.box) out[`${s.row}-${s.column}`] = s.box.name; });
+  } else {
+    const box = rack.boxSlots.find(s => s.box?.id === boxId)?.box;
+    const names = new Map((layout.freezerData.samples ?? []).map(x => [x.id, x.name]));
+    box?.positions.forEach(p => { if (p.sampleId) out[`${p.row}-${p.column}`] = names.get(p.sampleId) ?? ''; });
+  }
+  return out;
+}
+
 /** Keeps only cells that have a name, trimmed. */
 function filled(cells: FillCell[]): FillCell[] {
   return cells.map(c => ({ ...c, name: c.name.trim() })).filter(c => c.name !== '');
